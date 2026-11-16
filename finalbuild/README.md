@@ -2,7 +2,7 @@
 
 ## ElytrixSubscribe
 
-Удалите старый `ElytrixSubscribe-2.0.1.jar` из `plugins` и положите вместо него `ElytrixSubscribe.jar`. Нужны зависимости из `plugin.yml`: PlaceholderAPI, LuckPerms и BMenu. После перезапуска замените префикс `%slidesubscribe_…%` на `%elytrixsubscribe_…%` в меню и других конфигурациях. Остальные параметры плейсхолдеров сохранены.
+Удалите старый `ElytrixSubscribe-2.0.1.jar` из `plugins` и положите вместо него `ElytrixSubscribe.jar`. Нужны зависимости из `plugin.yml`: PlaceholderAPI, LuckPerms и BMenu. После перезапуска замените префикс `%slidesubscribe_…%` на `%elytrixsubscribe_…%` в меню и других конфигурациях. Плейсхолдер `%elytrixsubscribe_sub_status%` удалён; замените его на `%elytrixsubscribe_hassubscribe%`. Остальные параметры плейсхолдеров сохранены.
 
 `%elytrixsubscribe_hassubscribe%` показывает оставшиеся дни (например, `15д`), а без подписки — `Нет`. Дни округляются вверх: неполный день считается за один. Плейсхолдер работает для игроков онлайн; для игрока вне сети исходный плагин возвращает пустую строку. Если у вас уже есть `plugins/ElytrixSubscribe/config.yml`, установите в нём `settings.noHaveSubscribePlaceholder: 'Нет'`, иначе сохранится прежний настроенный текст.
 

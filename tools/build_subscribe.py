@@ -24,8 +24,11 @@ def patch(data):
         if tag == 1:
             n = struct.unpack_from('>H', data, pos)[0]; pos += 2 + n
             raw = data[start+3:pos]
-            if raw in (b'slidesubscribe', '&7Нет'.encode('utf-8')):
-                raw = b'elytrixsubscribe' if raw == b'slidesubscribe' else 'Нет'.encode('utf-8')
+            replacements = {b'slidesubscribe': b'elytrixsubscribe',
+                            '&7Нет'.encode('utf-8'): 'Нет'.encode('utf-8'),
+                            b'sub_status': b''}
+            if raw in replacements:
+                raw = replacements[raw]
                 pool += b'\x01' + u2(len(raw)) + raw
             else: pool += data[start:pos]
         else:
@@ -48,7 +51,35 @@ def patch(data):
     old = bytes.fromhex('2ab4000db600442db6005eba00620000b80058b0')
     new = b'\x2a\xb4\x00\x0d\xb6'+u2(service)+b'\x2d\xb9'+u2(uuid)+b'\x01\x00\xb6'+u2(expiry)+b'\xb8'+u2(remaining)+b'\xb0'
     assert len(old)==len(new) and data[pos:].count(old)==1
-    return data[:8]+u2(count+len(entries))+pool+b''.join(entries)+data[pos:].replace(old,new,1)
+    body = data[pos:].replace(old,new,1)
+    # Make the old sub_status comparison always false without changing offsets or frames.
+    status_test = bytes.fromhex('1904126bb60040990031')
+    assert body.count(status_test) == 1
+    body = body.replace(status_test, bytes.fromhex('19040100b60040990031'), 1)
+    return data[:8]+u2(count+len(entries))+pool+b''.join(entries)+body
+
+def fix_death_event(data):
+    # Rewrite both the handler descriptor and the method owner in the constant pool.
+    old = b'org/bukkit/event/player/PlayerDeathEvent'
+    new = b'org/bukkit/event/entity/PlayerDeathEvent'
+    out = bytearray(data[:10]); count = struct.unpack_from('>H', data, 8)[0]
+    pos, i, changed = 10, 1, 0
+    while i < count:
+        start = pos; tag = data[pos]; pos += 1
+        if tag == 1:
+            n = struct.unpack_from('>H', data, pos)[0]; pos += 2 + n
+            raw = data[start+3:pos]
+            if old in raw:
+                raw = raw.replace(old, new); changed += 1
+                out += b'\x01' + u2(len(raw)) + raw
+            else: out += data[start:pos]
+        else:
+            size = {3:4,4:4,5:8,6:8,7:2,8:2,9:4,10:4,11:4,12:4,15:3,16:2,17:4,18:4,19:2,20:2}[tag]
+            pos += size; out += data[start:pos]
+            if tag in (5,6): i += 1
+        i += 1
+    assert changed == 2
+    return bytes(out) + data[pos:]
 
 def helper():
     c = ClassFile.create(HELPER); c.version=(52,0)
@@ -71,8 +102,9 @@ with zipfile.ZipFile(SOURCE) as src, zipfile.ZipFile(TARGET,'w',zipfile.ZIP_DEFL
     for info in src.infolist():
         data=src.read(info.filename)
         if info.filename==CLASS: data=patch(data)
+        if info.filename=='ru/rooyzee/elytrixsubscribe/pet/PetManager.class': data=fix_death_event(data)
         if info.filename=='config.yml':
-            s=data.decode('utf-8'); s='\n'.join(line for line in s.splitlines() if not line.lstrip().startswith('#'))+'\n'
+            s=data.decode('utf-8'); s='\n'.join(line for line in s.splitlines() if not line.lstrip().startswith('#') and not line.strip().startswith('hasSubscribePlaceholder:'))+'\n'
             s=s.replace("noHaveSubscribePlaceholder: '&7Нет'", "noHaveSubscribePlaceholder: 'Нет'")
             s=s.replace('&fОшибка:', '&cОшибка:').replace('&fВам была успешно выдана подписка!', '&aПодписка успешно выдана!')
             data=s.encode('utf-8')
