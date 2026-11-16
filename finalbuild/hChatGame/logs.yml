@@ -1,0 +1,99 @@
+logs:
+  locale:
+    selectionRequired:
+      - "Выберите locale: ru или en в plugins/hChatGame/locale.yml, затем выполните /hchatgame reload или перезапустите сервер."
+    unsupported:
+      - "Неизвестная локаль {locale}. Доступны ru и en."
+    resourceMissing:
+      - "Встроенный файл локали не найден: {file}"
+    fileFailed:
+      - "Не удалось установить или прочитать локаль: {error}"
+    noPermission:
+      - "У вас нет прав для настройки локали."
+  plugin:
+    startFailed:
+      - "Не удалось запустить плагин: {error}"
+  config:
+    loadFailed:
+      - "Не удалось загрузить {file}: {error}"
+    reloadFailed:
+      - "Не удалось перезагрузить конфигурацию: {error}"
+  antibot:
+    invalidDuration:
+      - "Некорректная длительность в antibot/settings.yml: {value}"
+  games:
+    anagram:
+      invalidWords:
+        - "В games/anagram.yml пропущены повторы и неподходящие слова. Используйте слова из разных букв без пробелов, цифр и знаков."
+      invalidSettings:
+        - "Игра «Анаграммы» не может быть запущена: в games/anagram.yml нужны слова и положительное durationSeconds."
+    letters:
+      invalidWords:
+        - "В games/letters.yml пропущены повторы и неподходящие слова. Используйте русские или английские слова без пробелов, цифр и знаков."
+      invalidSettings:
+        - "Игра «Сколько букв в слове» не может быть запущена: в games/letters.yml нужны слова и положительное durationSeconds."
+    oddWord:
+      invalidPuzzles:
+        - "В games/oddWord.yml пропущены некорректные задания: нужны минимум 3 разных слова и ровно одно лишнее слово из этого списка в answers."
+      invalidSettings:
+        - "Игра «Лишнее слово» не может быть запущена: в games/oddWord.yml нужны корректные задания и положительное durationSeconds."
+    craft:
+      invalidPuzzles:
+        - "В games/craft.yml пропущены некорректные задания: ingredients и answers должны быть непустыми списками непустых строк."
+      invalidSettings:
+        - "Игра «Угадай крафт» не может быть запущена: в games/craft.yml нужны корректные задания и положительное durationSeconds."
+  database:
+    typeMissing:
+      - "В antibot/storage.yml не указан тип базы данных."
+    invalidType:
+      - "Тип базы данных {type} в antibot/storage.yml должен быть sqlite или mysql."
+    invalidPool:
+      - "Некорректные размеры пула, тайм-ауты или интервалы в antibot/storage.yml."
+    invalidLifetime:
+      - "Некорректные интервалы проверки и срока жизни соединений в antibot/storage.yml."
+    invalidMysql:
+      - "Некорректные параметры подключения к MySQL в antibot/storage.yml."
+    invalidProperty:
+      - "JDBC-параметр должен быть строкой, числом или boolean: {property}"
+    closing:
+      - "Хранилище антибота уже закрывается."
+    shutdownTimeout:
+      - "Превышено время ожидания завершения работы хранилища антибота."
+    shutdownInterrupted:
+      - "Ожидание сохранения ограничений антибота прервано."
+    unsavedRestrictions:
+      - "Остались несохранённые ограничения антибота: {count}"
+    initFailed:
+      - "Не удалось инициализировать хранилище антибота: {error}"
+    writeFailed:
+      - "Не удалось сохранить ограничения антибота; очередь будет записана повторно: {error}"
+    refreshFailed:
+      - "Не удалось обновить кэш ограничений антибота: {error}"
+    cleanupFailed:
+      - "Не удалось очистить истёкшие ограничения антибота: {error}"
+    closeFailed:
+      - "Не удалось закрыть пул хранилища антибота: {error}"
+  vault:
+    invalidAmount:
+      - "Сумма в [VAULT] должна быть конечным неотрицательным числом."
+    transactionFailed:
+      - "Не удалось выполнить [VAULT] для игрока {player}: {error}"
+    executionFailed:
+      - "Ошибка выполнения [VAULT] для игрока {player}: {error}"
+  updates:
+    checkFailed:
+      - "Не удалось проверить обновление hChatGame: {error}"
+    compareFailed:
+      - "Не удалось сравнить версии hChatGame: {error}"
+    available:
+      - "Доступно обновление hChatGame: v{currentVersion} → v{newVersion} ({url})"
+    httpError:
+      - "сайт вернул HTTP {status}"
+    missingVersion:
+      - "в ответе отсутствует поле version"
+    interrupted:
+      - "проверка была прервана"
+    connectionFailed:
+      - "ошибка соединения"
+    invalidVersion:
+      - "Некорректная версия: {version}"

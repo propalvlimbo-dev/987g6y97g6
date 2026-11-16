@@ -1,0 +1,21 @@
+settings:
+  enable: true
+  global:
+    chat:
+      enable: false
+      symbol: "!"
+  name: "<#F8BEFB>угадайте число"
+  minInt: 0
+  maxInt: 25
+  cooldown: 1250
+  actions:
+    start:
+      - "[BROADCAST] "
+      - "[BROADCAST] {prefix} <#F8BEFB>Угадай число"
+      - "[BROADCAST] <gray>● <white>Угадай число от <#F8BEFB>{guessMin} <white>до <#F8BEFB>{guessMax}"
+      - "[BROADCAST] "
+    end:
+      - "[BROADCAST] {prefix} <green>Победил <#F8BEFB>{player}<white>! Ответ: <#F8BEFB>{answer}"
+      - "[CONSOLE] p give {player} 1"
+    antiSpam:
+      - "[MESSAGE] {prefix} Ответ верный, но <#F8BEFB>давайте<white> без спама... Напишите <#F8BEFB>ответ<white> ещё раз!"

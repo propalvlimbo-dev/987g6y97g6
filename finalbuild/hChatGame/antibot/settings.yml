@@ -1,0 +1,36 @@
+settings:
+  enable: true
+  bypass: false
+  punishmentDuration: "7d"
+  actions:
+    fastAnswer:
+      - "[MESSAGE] {prefix} Ответ верный, но слишком быстрый. Напишите ответ ещё раз без автокликеров и модификаций."
+    punished:
+      - "[MESSAGE] {prefix} Вы <red>отстранены<white> от чат-игр на <#F8BEFB>{antibotDuration}<white>. Причина: <#F8BEFB>{antibotReason}<white>."
+    restricted:
+      - "[MESSAGE] {prefix} Вы временно <red>отстранены<white> от чат-игр до <#F8BEFB>{antibotUntil}<white>."
+  reasons:
+    restricted: "ограничение активно"
+    instantAnswer: "мгновенный ответ"
+    fastAnswer: "слишком быстрый ответ"
+    preciseAnswer: "точный быстрый ответ без ошибок"
+  timeUnits:
+    milliseconds: "мс"
+    seconds: "с"
+    minutes: "м"
+    hours: "ч"
+    days: "д"
+  detection:
+    instantAnswerTimeMs: 350
+    minimumAnswerTimeMs: 900
+    suspiciousAnswerTimeMs: 1600
+    historyResetTime: "30m"
+    warningCooldownMs: 1500
+    punishScore: 100
+    minimumEvidenceCount: 5
+    score:
+      instantAnswer: 70
+      fastAnswer: 45
+      perfectNoMistakes: 20
+      perfectStreakLength: 3
+      perfectStreak: 15

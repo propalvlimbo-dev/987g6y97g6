@@ -1,0 +1,52 @@
+settings:
+  enable: true
+  global:
+    chat:
+      enable: false
+      symbol: "!"
+  durationSeconds: 30
+  actions:
+    start:
+      - "[BROADCAST] "
+      - "[BROADCAST] {prefix} <#F8BEFB>Угадай крафт"
+      - "[BROADCAST] <gray>● <white>Что получится из <#F8BEFB>{ingredients}<white>?"
+      - "[BROADCAST] "
+    end:
+      - "[BROADCAST] {prefix} <green>Победил <#F8BEFB>{player}<white>! Ответ: <#F8BEFB>{answer}"
+      - "[CONSOLE] p give {player} 1"
+    timeout:
+      - "[BROADCAST] {prefix} Время вышло! Правильный ответ<gray>: <#F8BEFB>{answer}"
+  puzzles:
+    - ingredients: ["4 доски квадратом 2x2"]
+      answers: ["верстак"]
+    - ingredients: ["8 досок по краям сетки 3x3"]
+      answers: ["сундук"]
+    - ingredients: ["8 булыжников по краям сетки 3x3"]
+      answers: ["печь","печка"]
+    - ingredients: ["2 доски друг над другом"]
+      answers: ["палка","палки"]
+    - ingredients: ["3 пшеницы в ряд"]
+      answers: ["хлеб"]
+    - ingredients: ["3 сахарных тростника в ряд"]
+      answers: ["бумага"]
+    - ingredients: ["3 бумаги","1 кожа"]
+      answers: ["книга"]
+    - ingredients: ["3 железных слитка буквой V"]
+      answers: ["ведро"]
+    - ingredients: ["4 железных слитка","1 редстоун в центре"]
+      answers: ["компас"]
+    - ingredients: ["4 золотых слитка","1 редстоун в центре"]
+      answers: ["часы"]
+    - ingredients: ["3 палки","3 нити"]
+      answers: ["лук"]
+    - ingredients: ["2 железных слитка по диагонали"]
+      answers: ["ножницы"]
+    - ingredients: ["7 палок буквой Н"]
+      answers: ["лестница"]
+    - ingredients: ["1 уголь над палкой"]
+      answers: ["факел","факелы"]
+    - ingredients: ["3 палки","2 нити"]
+      answers: ["удочка"]
+    - ingredients: ["5 пороха","4 песка"]
+      answers: ["динамит","тнт","tnt"]
+

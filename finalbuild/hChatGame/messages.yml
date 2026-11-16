@@ -1,0 +1,21 @@
+messages:
+  noAdminPerms:
+    - "{prefix} <red>Недостаточно прав."
+  adminCommandHelp:
+    - "{prefix} <#F8BEFB>Команды"
+    - "<gray>● <white>/hchatgame reload"
+    - "<gray>● <white>/hchatgame start"
+    - "<gray>● <white>/hchatgame state"
+  config:
+    reloaded:
+      - "{prefix} <green>Конфигурация успешно перезагружена."
+    reloadFailed:
+      - "{prefix} <red>Ошибка перезагрузки. Проверьте консоль."
+  gameState:
+    - "{prefix} <#F8BEFB>Состояние игры"
+    - "<gray>● <white>Активна: <#F8BEFB>{gameActive}"
+    - "<gray>● <white>Вопрос: <#F8BEFB>{currentQuestion}"
+    - "<gray>● <white>Индекс: <#F8BEFB>{currentGameIndex}"
+    - "<gray>● <white>Ответ: <#F8BEFB>{currentAnswer}"
+    - "<gray>● <white>Игра: <#F8BEFB>{currentGame}"
+    - "<gray>● <white>Победитель: <#F8BEFB>{winnerPlayer}"

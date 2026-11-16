@@ -1,0 +1,28 @@
+actions:
+  noPermsSolved:
+    - "[MESSAGE] {prefix} <red>Недостаточно прав."
+  globalChatRequired:
+    - "[MESSAGE] {prefix} <white>Верный ответ! Напишите его в глобальный чат через <#F8BEFB>{globalSymbol}"
+  noAdminPerms:
+    - "[MESSAGE] {prefix} <red>Недостаточно прав."
+  adminCommandHelp:
+    - "[MESSAGE] {prefix} <#F8BEFB>Команды"
+    - "[MESSAGE] <gray>● <white>/hchatgame reload <gray>— перезагрузить"
+    - "[MESSAGE] <gray>● <white>/hchatgame start <gray>— запустить игру"
+    - "[MESSAGE] <gray>● <white>/hchatgame state <gray>— состояние игры"
+  config:
+    reloaded:
+      - "[MESSAGE] {prefix} <green>Конфигурация успешно перезагружена."
+    reloadFailed:
+      - "[MESSAGE] {prefix} <red>Ошибка перезагрузки. Проверьте консоль."
+  gameState:
+    - "[MESSAGE] {prefix} <#F8BEFB>Состояние игры"
+    - "[MESSAGE] <gray>● <white>Активна: <#F8BEFB>{gameActive}"
+    - "[MESSAGE] <gray>● <white>Вопрос: <#F8BEFB>%hchatgame_currentQuestion%"
+    - "[MESSAGE] <gray>● <white>Индекс: <#F8BEFB>%hchatgame_currentGameIndex%"
+    - "[MESSAGE] <gray>● <white>Ответ: <#F8BEFB>%hchatgame_currentAnswer%"
+    - "[MESSAGE] <gray>● <white>Игра: <#F8BEFB>%hchatgame_currentGame%"
+    - "[MESSAGE] <gray>● <white>До следующей: <#F8BEFB>%hchatgame_timeForNext% сек."
+  updateAvailable:
+    - "[MESSAGE] {prefix} <white>Обновление: <#F8BEFB>{currentVersion} → {newVersion}"
+    - "[MESSAGE] <gray>● <click:open_url:'{url}'><#F8BEFB>Открыть страницу обновления</click>"

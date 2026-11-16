@@ -1,0 +1,9 @@
+settings:
+  prefix: "<white>☁ <#F8BEFB>ᴇ<#F6BEFB>ʟ<#F3BEFB>ʏ<#F1BFFB>ᴛ<#EEBFFB>ʀ<#ECBFFB>ɪ<#E9BFFB>x <gray>»<white>"
+  timeForNext: 300
+  randomGame: true
+  unknown: "<gray>Отсутствует"
+  zero: 0
+  yes: "да"
+  no: "нет"
+  updateChecker: true

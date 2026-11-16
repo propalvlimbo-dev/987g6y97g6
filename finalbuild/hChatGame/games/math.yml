@@ -1,0 +1,26 @@
+settings:
+  enable: true
+  global:
+    chat:
+      enable: false
+      symbol: "!"
+  minInt: 10
+  maxInt: 75
+  int: 2
+  division:
+    enable: false
+  multiplication:
+    enable: false
+  addition:
+    enable: true
+  subtraction:
+    enable: true
+  actions:
+    start:
+      - "[BROADCAST] "
+      - "[BROADCAST] {prefix} <#F8BEFB>Математика"
+      - "[BROADCAST] <gray>● <white>Реши пример: <#F8BEFB>{mathProblem}"
+      - "[BROADCAST] "
+    end:
+      - "[BROADCAST] {prefix} <green>Победил <#F8BEFB>{player}<white>! Ответ: <#F8BEFB>{answer}"
+      - "[CONSOLE] p give {player} 1"

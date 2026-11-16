@@ -1,0 +1,43 @@
+settings:
+  database:
+    type: "sqlite"
+    pool:
+      maximumPoolSize: 5
+      minimumIdle: 1
+      connectionTimeoutMs: 30000
+      validationTimeoutMs: 5000
+      idleTimeoutMs: 600000
+      maxLifetimeMs: 1800000
+      keepaliveTimeMs: 120000
+      leakDetectionThresholdMs: 0
+    mysql:
+      host: "localhost"
+      port: 3306
+      database: "hchatgame"
+      username: "root"
+      password: ""
+      ssl: false
+      allowPublicKeyRetrieval: true
+      properties:
+        useUnicode: true
+        characterEncoding: "UTF-8"
+        connectionTimeZone: "UTC"
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        rewriteBatchedStatements: true
+        cacheResultSetMetadata: true
+        cacheServerConfiguration: true
+        maintainTimeStats: false
+        connectTimeout: 10000
+        socketTimeout: 30000
+        tcpKeepAlive: true
+  writes:
+    flushIntervalMs: 250
+    batchSize: 200
+  cache:
+    refreshIntervalSeconds: 60
+  cleanup:
+    intervalSeconds: 300
+  shutdownTimeoutSeconds: 30
