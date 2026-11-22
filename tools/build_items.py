@@ -6,7 +6,7 @@ from jawa.cf import ClassFile
 
 root = Path(__file__).resolve().parents[1]
 source = root / 'ElytrixItem-2.5.7.jar'
-target = root / 'finalbuild/ElytrixItem.jar'
+target = root / 'finalbuild/ElytrixItem-fix3.jar'
 base = 'ru/rooyzee/elytrixitem/'
 
 def replace_method(data, name, change):
@@ -18,9 +18,9 @@ def replace_method(data, name, change):
 
 def gear(data):
     def edit(code):
-        # elytra1 already has Unbreaking III; remove only its Mending I.
+        # Bogatyr's elytra should have no enchantments, only the unbreakable flag.
         old = bytes.fromhex('1259b20054125bb70019b2002906b60022b2002c04b60022b6002f')
-        new = bytes.fromhex('1259b20054125bb70019b2002906b60022') + b'\x00' * 7 + bytes.fromhex('b6002f')
+        new = bytes.fromhex('1259b20054125bb70019') + b'\x00' * 14 + bytes.fromhex('b6002f')
         assert code.count(old) == 1
         return code.replace(old, new, 1)
     return replace_method(data, 'register', edit)
@@ -36,6 +36,47 @@ def cp_end(data):
             if tag in (5,6): i+=1
         i+=1
     return count,p
+
+def patch_gear_creation(data):
+    count, end = cp_end(data)
+    # Append a static helper reference without changing existing constant indices.
+    def utf(s):
+        b = s.encode('utf-8'); return b'\x01' + struct.pack('>H', len(b)) + b
+    u2 = lambda n: struct.pack('>H', n)
+    name = base + 'item/impl/BogatyrElytraFix'
+    desc = '(Lru/rooyzee/elytrixitem/item/impl/GearItem;Lorg/bukkit/inventory/ItemStack;)Lorg/bukkit/inventory/ItemStack;'
+    pool = (utf(name) + b'\x07' + u2(count) + utf('finish') + utf(desc)
+            + b'\x0c' + u2(count+2) + u2(count+3)
+            + b'\x0a' + u2(count+1) + u2(count+4))
+    def edit(code):
+        old = bytes.fromhex('2bb8009a2bb0')
+        new = b'\x2a\x2b\xb8' + u2(count+5) + b'\xb0'
+        assert code.count(old) == 1
+        return code.replace(old, new, 1)
+    data = replace_method(data, 'createItem', edit)
+    return data[:8] + u2(count+6) + data[10:end] + pool + data[end:]
+
+def bogatyr_helper():
+    # Java 5 verifier infers frames; this straight-line helper has one branch.
+    helper = base + 'item/impl/BogatyrElytraFix'
+    gear_type = base + 'item/impl/GearItem'
+    c = ClassFile.create(helper); c.version = (49, 0)
+    m = c.methods.create('finish', '(L'+gear_type+';Lorg/bukkit/inventory/ItemStack;)Lorg/bukkit/inventory/ItemStack;', code=True)
+    m.access_flags.acc_public = True; m.access_flags.acc_static = True
+    def u2(n): return struct.pack('>H', n)
+    details = c.constants.create_method_ref(base+'util/ItemStackUtil','showAllDetails','(Lorg/bukkit/inventory/ItemStack;)V').index
+    ident = c.constants.create_string('elytra1').index
+    getid = c.constants.create_method_ref(gear_type,'getId','()Ljava/lang/String;').index
+    equals = c.constants.create_method_ref('java/lang/String','equals','(Ljava/lang/Object;)Z').index
+    getmeta = c.constants.create_method_ref('org/bukkit/inventory/ItemStack','getItemMeta','()Lorg/bukkit/inventory/meta/ItemMeta;').index
+    unbreakable = c.constants.create_interface_method_ref('org/bukkit/inventory/meta/ItemMeta','setUnbreakable','(Z)V').index
+    setmeta = c.constants.create_method_ref('org/bukkit/inventory/ItemStack','setItemMeta','(Lorg/bukkit/inventory/meta/ItemMeta;)Z').index
+    prefix = (b'\x2b\xb8'+u2(details)+b'\x13'+u2(ident)+b'\x2a\xb6'+u2(getid)+b'\xb6'+u2(equals))
+    body = (b'\x2b\xb6'+u2(getmeta)+b'\x4d\x2c\x04\xb9'+u2(unbreakable)+b'\x02\x00'
+            +b'\x2b\x2c\xb6'+u2(setmeta)+b'\x57')
+    m.code.max_stack = 2; m.code.max_locals = 3
+    m.code._code = prefix + b'\x99' + u2(len(body)+3) + body + b'\x2b\xb0'
+    out = io.BytesIO(); c.save(out); return out.getvalue()
 
 def arrows(data):
     # 1.21.11 applies the tipped-arrow potion duration scale (1/8).
@@ -65,10 +106,13 @@ with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFL
     for info in src.infolist():
         data = src.read(info.filename)
         if info.filename == base+'item/GearItems.class': data=gear(data)
+        if info.filename == base+'item/impl/GearItem.class': data=patch_gear_creation(data)
         if info.filename == base+'item/ConsumableItems.class': data=arrows(data)
         if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=fix_worldedit(data)
         if info.filename == 'plugin.yml':
+            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix3'")
             data = data.replace(b'softdepend: [WorldGuard, Vault]', b'softdepend: [WorldGuard, Vault, WorldEdit, FastAsyncWorldEdit]')
         out.writestr(info,data)
+    out.writestr(base+'item/impl/BogatyrElytraFix.class', bogatyr_helper())
     (root/'finalbuild/trapa.schem').write_bytes(schematic)
 print(target)
