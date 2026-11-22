@@ -38,12 +38,27 @@ def cp_end(data):
     return count,p
 
 def arrows(data):
-    # In 1.21.0 custom arrow effects apply their full stored duration on hit.
-    # The 100-tick levitation effect already lasts five seconds.
+    # 1.21.11 applies the tipped-arrow potion duration scale (1/8).
+    # 480 ticks becomes 3 seconds and 800 becomes 5 seconds on hit.
+    count, end = cp_end(data)
+    assert count < 256
     def edit(code):
         assert code.count(bytes.fromhex('1100c8')) == 9
-        return code.replace(bytes.fromhex('1100c8'),bytes.fromhex('11003c'))
-    return replace_method(data, 'registerArrows', edit)
+        code = code.replace(bytes.fromhex('1100c8'), bytes.fromhex('1101e0'))
+        old = bytes.fromhex('b20062106404b8002b')
+        assert code.count(old) == 1
+        return code.replace(old, bytes.fromhex('b2006212') + bytes([count]) + bytes.fromhex('04b8002b'))
+    data = replace_method(data, 'registerArrows', edit)
+    return data[:8] + struct.pack('>H', count+1) + data[10:end] + b'\x03' + struct.pack('>i',800) + data[end:]
+
+def fix_worldedit(data):
+    # FAWE and WorldEdit expose adapt(BlockStateHolder), not adapt(BlockState).
+    old = b'(Lcom/sk89q/worldedit/world/block/BlockState;)Lorg/bukkit/block/data/BlockData;'
+    new = b'(Lcom/sk89q/worldedit/world/block/BlockStateHolder;)Lorg/bukkit/block/data/BlockData;'
+    before = b'\x01' + struct.pack('>H', len(old)) + old
+    after = b'\x01' + struct.pack('>H', len(new)) + new
+    assert data.count(before) == 1
+    return data.replace(before, after, 1)
 
 with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as out:
     schematic = src.read('schem/trapa.schem')
@@ -51,6 +66,9 @@ with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFL
         data = src.read(info.filename)
         if info.filename == base+'item/GearItems.class': data=gear(data)
         if info.filename == base+'item/ConsumableItems.class': data=arrows(data)
+        if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=fix_worldedit(data)
+        if info.filename == 'plugin.yml':
+            data = data.replace(b'softdepend: [WorldGuard, Vault]', b'softdepend: [WorldGuard, Vault, WorldEdit, FastAsyncWorldEdit]')
         out.writestr(info,data)
     (root/'finalbuild/trapa.schem').write_bytes(schematic)
 print(target)
