@@ -1,0 +1,1 @@
+package org.bukkit.block; import org.bukkit.Material; import org.bukkit.World; public interface Block { boolean isPassable(); int getX(); int getY(); int getZ(); World getWorld(); void setType(Material m,boolean physics); Material getType(); }

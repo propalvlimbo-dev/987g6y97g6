@@ -6,7 +6,7 @@ from jawa.cf import ClassFile
 
 root = Path(__file__).resolve().parents[1]
 source = root / 'ElytrixItem-2.5.7.jar'
-target = root / 'finalbuild/ElytrixItem-fix3.jar'
+target = root / 'finalbuild/ElytrixItem-fix4.jar'
 base = 'ru/rooyzee/elytrixitem/'
 
 def replace_method(data, name, change):
@@ -101,6 +101,30 @@ def fix_worldedit(data):
     assert data.count(before) == 1
     return data.replace(before, after, 1)
 
+def patch_trap(data):
+    data = fix_worldedit(data)
+    count, end = cp_end(data)
+    def u2(n): return struct.pack('>H', n)
+    def utf(s):
+        b = s.encode(); return b'\x01' + u2(len(b)) + b
+    pool = (utf(base+'item/impl/TrapSafety') + b'\x07' + u2(count)
+            + utf('prepare')
+            + utf('(Ljava/lang/Object;Lorg/bukkit/entity/Player;Lorg/bukkit/World;IIIIIILjava/util/Map;)Z')
+            + b'\x0c' + u2(count+2) + u2(count+3) + b'\x0a' + u2(count+1) + u2(count+4)
+            + utf('restore') + utf('(Lorg/bukkit/block/BlockState;ZZ)Z')
+            + b'\x0c' + u2(count+6) + u2(count+7) + b'\x0a' + u2(count+1) + u2(count+8))
+    def prepare(code):
+        old = bytes.fromhex('b602159a0006a7015c')
+        assert code.count(old) == 1
+        return code.replace(old, b'\xb8'+u2(count+5)+old[3:])
+    def restore(code):
+        old = bytes.fromhex('b902520300')
+        assert code.count(old) == 1
+        return code.replace(old, b'\xb8'+u2(count+9)+b'\x00\x00')
+    data = replace_method(data, 'pasteSchematic', prepare)
+    data = replace_method(data, 'tick', restore)
+    return data[:8]+u2(count+10)+data[10:end]+pool+data[end:]
+
 with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as out:
     schematic = src.read('schem/trapa.schem')
     for info in src.infolist():
@@ -108,11 +132,13 @@ with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFL
         if info.filename == base+'item/GearItems.class': data=gear(data)
         if info.filename == base+'item/impl/GearItem.class': data=patch_gear_creation(data)
         if info.filename == base+'item/ConsumableItems.class': data=arrows(data)
-        if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=fix_worldedit(data)
+        if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=patch_trap(data)
         if info.filename == 'plugin.yml':
-            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix3'")
+            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix4'")
             data = data.replace(b'softdepend: [WorldGuard, Vault]', b'softdepend: [WorldGuard, Vault, WorldEdit, FastAsyncWorldEdit]')
         out.writestr(info,data)
     out.writestr(base+'item/impl/BogatyrElytraFix.class', bogatyr_helper())
+    for name in ('TrapSafety.class', 'TrapSafety$DeferredRestore.class'):
+        out.writestr(base+'item/impl/'+name, (root/'tools/items-classes'/name).read_bytes())
     (root/'finalbuild/trapa.schem').write_bytes(schematic)
 print(target)

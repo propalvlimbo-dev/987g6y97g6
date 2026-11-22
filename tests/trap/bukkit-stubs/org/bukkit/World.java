@@ -1,0 +1,1 @@
+package org.bukkit; import java.util.List; import org.bukkit.entity.Player; import org.bukkit.block.Block; public interface World { List<Player> getPlayers(); int getMinHeight(); int getMaxHeight(); Block getBlockAt(int x,int y,int z); }
