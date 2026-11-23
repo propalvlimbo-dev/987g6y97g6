@@ -1,6 +1,8 @@
 package ru.rooyzee.elytrixitem.item.impl;
 
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -20,6 +22,24 @@ public final class TrapSafety {
                                   int minX, int maxX, int minY, int maxY,
                                   int minZ, int maxZ, Map<Block, BlockData> plan) {
         BlockData air = Bukkit.createBlockData(Material.AIR);
+        // The non-air schematic blocks define the footprint. Clear only within
+        // those columns, above its lowest layer, without pasting schematic air
+        // into unrelated outside corners or removing the floor/walls themselves.
+        Set<Long> footprint = new HashSet<>();
+        for (Block block : plan.keySet()) footprint.add(columnKey(block.getX(), block.getZ()));
+        for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) {
+            if (!footprint.contains(columnKey(x, z))) continue;
+            for (int y = Math.max(minY + 1, world.getMinHeight()); y < world.getMaxHeight(); y++) {
+                Block block = world.getBlockAt(x, y, z);
+                // Preserve the schematic even when a wall projects into a column.
+                // Include all non-air blocks, including plants, liquids and webs.
+                if (!plan.containsKey(block) && !block.getType().isAir()) {
+                    // Never open a hole in the world's bedrock boundary.
+                    if (block.getType() == Material.BEDROCK) return false;
+                    plan.put(block, air);
+                }
+            }
+        }
         for (Player player : world.getPlayers()) {
             BoundingBox b = player.getBoundingBox();
             if (b.getMaxX() <= minX || b.getMinX() >= maxX + 1.0 ||
@@ -48,6 +68,14 @@ public final class TrapSafety {
         }
         return true;
     }
+
+    private static long columnKey(int x, int z) {
+        return ((long) x << 32) ^ (z & 0xffffffffL);
+    }
+
+    // The original listener applies its no-place/no-flow protection to this
+    // upper bound. Extend protection above active traps to build height.
+    public static int clearanceLimit(Object zone) { return Integer.MAX_VALUE - 1; }
 
     private static boolean occupied(Block block) {
         int x = block.getX(), y = block.getY(), z = block.getZ();
