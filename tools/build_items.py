@@ -6,7 +6,7 @@ from jawa.cf import ClassFile
 
 root = Path(__file__).resolve().parents[1]
 source = root / 'ElytrixItem-2.5.7.jar'
-target = root / 'finalbuild/ElytrixItem-fix7.jar'
+target = root / 'finalbuild/ElytrixItem-fix8.jar'
 base = 'ru/rooyzee/elytrixitem/'
 
 def replace_method(data, name, change):
@@ -148,7 +148,7 @@ with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFL
         if info.filename == base+'item/ConsumableItems.class': data=arrows(data)
         if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=patch_trap(data)
         if info.filename == 'plugin.yml':
-            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix7'")
+            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix8'")
             data = data.replace(b'softdepend: [WorldGuard, Vault]', b'softdepend: [WorldGuard, Vault, WorldEdit, FastAsyncWorldEdit]')
         out.writestr(info,data)
     out.writestr(base+'item/impl/BogatyrElytraFix.class', bogatyr_helper())
