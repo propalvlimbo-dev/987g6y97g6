@@ -40,6 +40,24 @@ public final class TrapSafety {
                 }
             }
         }
+        // A one-block rim removes isolated terrain columns beside the walls.
+        // It is temporary, checked by the same protection rules and restored.
+        for (int x = minX - 1; x <= maxX + 1; x++) for (int z = minZ - 1; z <= maxZ + 1; z++) {
+            if (footprint.contains(columnKey(x, z))) continue;
+            boolean adjacent = false;
+            for (int dx = -1; dx <= 1 && !adjacent; dx++) for (int dz = -1; dz <= 1; dz++) {
+                if (footprint.contains(columnKey(x + dx, z + dz))) { adjacent = true; break; }
+            }
+            if (!adjacent) continue;
+            int top = Math.min(maxY + 1, world.getMaxHeight() - 1);
+            for (int y = Math.max(minY + 1, world.getMinHeight()); y <= top; y++) {
+                Block block = world.getBlockAt(x, y, z);
+                if (!plan.containsKey(block) && !block.getType().isAir()) {
+                    if (block.getType() == Material.BEDROCK) return false;
+                    plan.put(block, air);
+                }
+            }
+        }
         for (Player player : world.getPlayers()) {
             BoundingBox b = player.getBoundingBox();
             if (b.getMaxX() <= minX || b.getMinX() >= maxX + 1.0 ||

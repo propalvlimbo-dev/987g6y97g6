@@ -53,7 +53,24 @@ public class Transform implements Opcodes {
    m=method(c,"getTotalWeight");a=new InsnList();a.add(new InsnNode(ICONST_5));a.add(new InsnNode(IRETURN));replace(m,a);hit("slot.weight");
   }
   if(name.equals(AG)){
+   MethodNode original=method(c,"open"); original.name="openNew";
+   MethodNode wrapper=new MethodNode(ACC_PUBLIC,"open",original.desc,null,null);
+   InsnList w=wrapper.instructions; LabelNode create=new LabelNode();
+   w.add(new VarInsnNode(ALOAD,1));w.add(new VarInsnNode(ALOAD,2));w.add(new MethodInsnNode(INVOKEVIRTUAL,P+"automate/Automate","getId","()Ljava/lang/String;",false));
+   w.add(new MethodInsnNode(INVOKESTATIC,R,"reopen","(Lorg/bukkit/entity/Player;Ljava/lang/String;)Z",false));
+   w.add(new JumpInsnNode(IFEQ,create));w.add(new InsnNode(RETURN));w.add(create);w.add(new FrameNode(F_SAME,0,null,0,null));
+   w.add(new VarInsnNode(ALOAD,0));w.add(new VarInsnNode(ALOAD,1));w.add(new VarInsnNode(ALOAD,2));w.add(new MethodInsnNode(INVOKEVIRTUAL,AG,"openNew",original.desc,false));w.add(new InsnNode(RETURN));
+   c.methods.add(wrapper);hit("slot.reopen");
    MethodNode m=method(c,"createGrid");InsnList a=new InsnList();a.add(new VarInsnNode(ALOAD,0));a.add(new FieldInsnNode(GETFIELD,AG,"plugin","L"+P+"Main;"));a.add(new MethodInsnNode(INVOKEVIRTUAL,P+"Main","getAutomateSettings","()L"+P+"automate/AutomateSettings;",false));a.add(new MethodInsnNode(INVOKEVIRTUAL,P+"automate/AutomateSettings","getSymbols","()Ljava/util/List;",false));a.add(new VarInsnNode(ALOAD,1));a.add(new MethodInsnNode(INVOKESTATIC,F,"grid","(Ljava/util/List;Ljava/util/concurrent/ThreadLocalRandom;)[[L"+P+"automate/SlotSymbol;",false));a.add(new InsnNode(ARETURN));replace(m,a);hit("slot.grid");
+  }
+  if(name.equals(P+"roulette/Roulette")){
+   MethodNode m=method(c,"followNameHolo");InsnList a=new InsnList();
+   a.add(new VarInsnNode(ALOAD,0));a.add(new FieldInsnNode(GETFIELD,c.name,"nameHolo","Ldev/by1337/virtualentity/api/virtual/display/VirtualTextDisplay;"));
+   a.add(new VarInsnNode(ALOAD,0));a.add(new FieldInsnNode(GETFIELD,c.name,"state","L"+P+"roulette/Roulette$State;"));
+   a.add(new VarInsnNode(ALOAD,0));a.add(new MethodInsnNode(INVOKEVIRTUAL,c.name,"settings","()L"+P+"roulette/RouletteSettings;",false));
+   a.add(new MethodInsnNode(INVOKEVIRTUAL,P+"roulette/RouletteSettings","getHologramLines","()Ljava/util/List;",false));
+   a.add(new MethodInsnNode(INVOKESTATIC,P+"patch/RouletteHologram","update","(Ldev/by1337/virtualentity/api/virtual/display/VirtualTextDisplay;Ljava/lang/Enum;Ljava/util/List;)V",false));
+   m.instructions.insert(a);hit("roulette.hologram");
   }
   if(name.equals(P+"roulette/RouletteSettings")){
    directStatic(c,"getSectors",F,"roulette","()Ljava/util/List;",ARETURN);
@@ -65,7 +82,14 @@ public class Transform implements Opcodes {
   }
   if(name.equals(P+"Main")) for(String method:new String[]{"onDisable","reload"}) {MethodNode m=method(c,method);m.instructions.insert(new MethodInsnNode(INVOKESTATIC,R,"finishAll","()V",false));hit("spin."+method);}
   if(name.equals(INNER)){
-   c.interfaces.add(R+"$Finishable"); MethodNode m=new MethodNode(ACC_PUBLIC,"finishNow","()V",null,null);InsnList a=m.instructions;
+   c.interfaces.add(R+"$Finishable");
+   for(String[] info:new String[][]{{"spinPlayer","val$player","Lorg/bukkit/entity/Player;","getUniqueId","()Ljava/util/UUID;"},{"spinMachine","val$automate","L"+P+"automate/Automate;","getId","()Ljava/lang/String;"},{"spinInventory","val$inventory","Lorg/bukkit/inventory/Inventory;",null,"()Lorg/bukkit/inventory/Inventory;"}}) {
+    MethodNode getter=new MethodNode(ACC_PUBLIC,info[0],info[4],null,null);InsnList g=getter.instructions;
+    g.add(new VarInsnNode(ALOAD,0));g.add(new FieldInsnNode(GETFIELD,INNER,info[1],info[2]));
+    if(info[3]!=null)g.add(new MethodInsnNode(info[0].equals("spinPlayer")?INVOKEINTERFACE:INVOKEVIRTUAL,info[0].equals("spinPlayer")?"org/bukkit/entity/Player":P+"automate/Automate",info[3],info[4],info[0].equals("spinPlayer")));
+    g.add(new InsnNode(ARETURN));c.methods.add(getter);hit("spin.getter");
+   }
+   MethodNode m=new MethodNode(ACC_PUBLIC,"finishNow","()V",null,null);InsnList a=m.instructions;
    a.add(new VarInsnNode(ALOAD,0));a.add(new FieldInsnNode(GETFIELD,INNER,"val$player","Lorg/bukkit/entity/Player;"));a.add(new VarInsnNode(ALOAD,0));a.add(new FieldInsnNode(GETFIELD,INNER,"val$inventory","Lorg/bukkit/inventory/Inventory;"));a.add(new MethodInsnNode(INVOKESTATIC,F,"closeIfViewing","(Lorg/bukkit/entity/Player;Lorg/bukkit/inventory/Inventory;)V",false));
    a.add(new VarInsnNode(ALOAD,0));a.add(new MethodInsnNode(INVOKEVIRTUAL,INNER,"cancel","()V",false));
    String[][] fields={{"this$0","L"+AG+";"},{"val$player","Lorg/bukkit/entity/Player;"},{"val$automate","L"+P+"automate/Automate;"},{"val$holder","L"+P+"gui/AutomateHolder;"},{"val$inventory","Lorg/bukkit/inventory/Inventory;"},{"val$grid","[[L"+P+"automate/SlotSymbol;"},{"val$bet","J"}};
@@ -80,12 +104,12 @@ public class Transform implements Opcodes {
    Enumeration<? extends ZipEntry> en=z.entries();while(en.hasMoreElements()){
     ZipEntry entry=en.nextElement();String n=entry.getName();if(n.equals(P+"bet/ActiveBetManager.class"))continue;
     byte[] data=z.getInputStream(entry).readAllBytes();if(n.endsWith(".class"))data=transform(data);
-    if(n.equals("plugin.yml"))data=new String(data,java.nio.charset.StandardCharsets.UTF_8).replace("version: '2.2.1'","version: '2.2.1-fix1'").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    if(n.equals("plugin.yml"))data=new String(data,java.nio.charset.StandardCharsets.UTF_8).replace("version: '2.2.1'","version: '2.2.1-fix2'").getBytes(java.nio.charset.StandardCharsets.UTF_8);
     out.putNextEntry(new ZipEntry(n));out.write(data);out.closeEntry();
    }
    for(String dir:new String[]{"ru/rooyzee/elytrixcasino/bet","ru/rooyzee/elytrixcasino/patch"}) try(var files=Files.walk(classes.resolve(dir))){for(Path p:files.filter(Files::isRegularFile).toList()){out.putNextEntry(new ZipEntry(classes.relativize(p).toString()));out.write(Files.readAllBytes(p));out.closeEntry();}}
   }
-  Map<String,Integer> expected=Map.ofEntries(Map.entry("release.Automate",3),Map.entry("release.Miner",5),Map.entry("release.Roulette",3),Map.entry("check.Automate",1),Map.entry("check.Miner",1),Map.entry("check.Roulette",2),Map.entry("spin.sounds",2),Map.entry("spin.schedule",1),Map.entry("spin.done",1),Map.entry("payout.floor",3),Map.entry("miner.shutdown",1),Map.entry("spin.force",1),Map.entry("spin.reload",1),Map.entry("spin.onDisable",1),Map.entry("slot.grid",1),Map.entry("slot.symbols",1),Map.entry("slot.weight",1),Map.entry("slot.cap",1),Map.entry("slot.lore",2),Map.entry("automate.busy",1),Map.entry("roulette.weight",1),Map.entry(P+"roulette/RouletteSettings.getSectors",1),Map.entry(P+"miner/MinerSettings.getCoinTiers",1),Map.entry("miner.getMinesCount",1),Map.entry("miner.getEmptyCount",1));
+  Map<String,Integer> expected=Map.ofEntries(Map.entry("release.Automate",3),Map.entry("release.Miner",5),Map.entry("release.Roulette",3),Map.entry("check.Automate",1),Map.entry("check.Miner",1),Map.entry("check.Roulette",2),Map.entry("spin.sounds",2),Map.entry("spin.schedule",1),Map.entry("spin.done",1),Map.entry("payout.floor",3),Map.entry("miner.shutdown",1),Map.entry("spin.force",1),Map.entry("spin.reload",1),Map.entry("spin.onDisable",1),Map.entry("slot.grid",1),Map.entry("slot.symbols",1),Map.entry("slot.weight",1),Map.entry("slot.cap",1),Map.entry("slot.lore",2),Map.entry("slot.reopen",1),Map.entry("spin.getter",3),Map.entry("roulette.hologram",1),Map.entry("automate.busy",1),Map.entry("roulette.weight",1),Map.entry(P+"roulette/RouletteSettings.getSectors",1),Map.entry(P+"miner/MinerSettings.getCoinTiers",1),Map.entry("miner.getMinesCount",1),Map.entry("miner.getEmptyCount",1));
   if(!counts.equals(expected))throw new IllegalStateException("Unexpected patch counts: "+counts+" expected "+expected);
   System.out.println("Patch counts: "+counts);
  }

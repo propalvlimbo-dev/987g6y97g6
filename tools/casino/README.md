@@ -1,9 +1,10 @@
-# ElytrixCasino 2.2.1-fix1
+# ElytrixCasino 2.2.1-fix2
 
 Patch for the original `ElytrixCasino-2.2.1.jar` (SHA-256 `f21984324b15c1a34d866a66facd2845e5724562467245b03287161c285038d9`). It retains the original plugin and patches its bytecode because upstream sources are not present.
 
 * Bets are locked per player and per game, not per player globally. Automate GUI, result and animation are per player even if the physical machine is shared. A player can have only one outstanding spin at a time.
-* Spin sounds only play while that particular GUI is being viewed. Closing the GUI does not cancel the result. On ordinary plugin disable or plugin reload, pending spins are completed once before teardown, including offline pending payouts. Sudden process crashes cannot be made transactionally safe with the original Vault/data storage.
+* Reopening the same physical machine during a spin restores the player’s own live inventory; another player has a separate inventory. Spin sounds only play while that particular GUI is being viewed. Closing the GUI does not cancel the result. On ordinary plugin disable or plugin reload, pending spins are completed once before teardown, including offline pending payouts. Sudden process crashes cannot be made transactionally safe with the original Vault/data storage.
+* The roulette NPC hologram changes while walking/spinning, disappears on the way back and restores its configured lines at home.
 * Roulette uses independent weighted outcomes x0/x2/x3/x5 with probabilities 63/24/9/4 percent: expected payout 95% before rounding. The wheel is weighted, not uniform across visual segments.
 * Slots have a 50% chance of one line, otherwise none. Conditional winning line payouts x1.2/x1.5/x2/x3/x6 have probabilities 30/34/20/11/5 percent respectively. Expected payout is 95% before rounding. No player-history adjustment. The first five distinct configured symbol names/icons are used; their configured odds and payouts are not used.
 * Miner has 14 mines, 20 coins, 11 empty cells; each coin adds 1.4 times the bet. The maximum expected payout under optimal stop/continue decisions is approximately 94.83% before rounding. Normal shutdown cashes out collected coins rather than granting the higher of stake and collected coins, preventing repeated reload refunds. A miner game with no collected coins therefore pays nothing on shutdown.

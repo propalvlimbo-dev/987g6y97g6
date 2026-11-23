@@ -23,12 +23,12 @@ public class TrapSafetyTest {
    Block wall=w.getBlockAt(2,10,2);plan.put(wall,data(Material.STONE));
    Block center=w.at(0,10,0,Material.STONE), distant=w.at(2,11,-1,Material.STONE);
    Block canopy=w.at(1,40,1,Material.STONE), ceiling=w.at(-1,319,1,Material.STONE), fluid=w.at(1,13,0,Material.WATER);
-   Block outside=w.at(-2,10,-2,Material.STONE), below=w.at(0,7,0,Material.STONE), empty=w.getBlockAt(1,100,0);
+   Block outside=w.at(-3,10,-3,Material.STONE), pillar=w.at(-2,10,-2,Material.STONE), below=w.at(0,7,0,Material.STONE), empty=w.getBlockAt(1,100,0);
    check(TrapSafety.prepare(null,p,w,-2,2,8,12,-2,2,plan),"valid plan");
-   for(Block b:new Block[]{center,distant,canopy,ceiling,fluid})check(plan.get(b).getMaterial()==Material.AIR,"clear interior and overhead");
+   for(Block b:new Block[]{center,distant,canopy,ceiling,fluid,pillar})check(plan.get(b).getMaterial()==Material.AIR,"clear interior and overhead");
    check(plan.get(wall).getMaterial()==Material.STONE,"preserve schematic wall");
    check(plan.get(w.getBlockAt(0,8,0)).getMaterial()==Material.STONE,"preserve floor");
-   check(!plan.containsKey(outside)&&!plan.containsKey(below),"preserve outside and below");
+   check(!plan.containsKey(outside)&&!plan.containsKey(below),"preserve distant outside and below");
    check(!plan.containsKey(empty),"do not snapshot empty air");
    check(TrapSafety.clearanceLimit(null)==Integer.MAX_VALUE-1,"protected overhead");
    // A roof at any height is not silently broken through.

@@ -15,7 +15,7 @@ mapfile -t sources < <(find tools/casino/stubs tools/casino/src -name '*.java' |
 "$JAVA" -cp "$ECJ" org.eclipse.jdt.internal.compiler.batch.Main -21 -nowarn "${exports[@]}" -d "$tmp/transform" tools/casino/Transform.java tools/casino/Verify.java
 "$JAVA" "${exports[@]}" -cp "$tmp/transform" Transform "$input" "$tmp/classes" "$tmp/ElytrixCasino.jar"
 "$JAVA" "${exports[@]}" -cp "$tmp/transform" Verify "$tmp/ElytrixCasino.jar"
-"$JAVA" -cp "$ECJ" org.eclipse.jdt.internal.compiler.batch.Main -21 -proc:none -nowarn -classpath "$tmp/ElytrixCasino.jar:$tmp/classes" -d "$tmp/test" tools/casino/tests/CasinoTests.java
+"$JAVA" -cp "$ECJ" org.eclipse.jdt.internal.compiler.batch.Main -21 -proc:none -nowarn -classpath "$tmp/ElytrixCasino.jar:$tmp/classes" -d "$tmp/test" tools/casino/tests/CasinoTests.java tools/casino/stubs/ru/rooyzee/elytrixcasino/util/Text.java
 "$JAVA" -Xverify:all -cp "$tmp/test:$tmp/ElytrixCasino.jar:$tmp/classes" CasinoTests
 python3 tools/casino/tests/miner_rtp.py
 unzip -t "$tmp/ElytrixCasino.jar" >/dev/null

@@ -6,7 +6,7 @@ from jawa.cf import ClassFile
 
 root = Path(__file__).resolve().parents[1]
 source = root / 'ElytrixItem-2.5.7.jar'
-target = root / 'finalbuild/ElytrixItem-fix5.jar'
+target = root / 'finalbuild/ElytrixItem-fix6.jar'
 base = 'ru/rooyzee/elytrixitem/'
 
 def replace_method(data, name, change):
@@ -124,7 +124,14 @@ def patch_trap(data):
         assert code.count(old) == 1
         return code.replace(old, b'\xb8'+u2(count+9)+b'\x00\x00')
     data = replace_method(data, 'pasteSchematic', prepare)
+    def no_corner_pillars(code):
+        # repairCornerGaps filled empty corners using adjacent world blocks,
+        # inadvertently creating vertical columns during an active trap.
+        old = bytes.fromhex('b60428')
+        assert code.count(old) == 1
+        return code.replace(old, bytes.fromhex('575757'), 1)
     data = replace_method(data, 'tick', restore)
+    data = replace_method(data, 'tick', no_corner_pillars)
     def extend_protection(code):
         old = bytes.fromhex('b603e6')  # ExplosiveTrapZone.getMaxY()
         assert code.count(old) == 1
@@ -141,7 +148,7 @@ with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFL
         if info.filename == base+'item/ConsumableItems.class': data=arrows(data)
         if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=patch_trap(data)
         if info.filename == 'plugin.yml':
-            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix5'")
+            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix6'")
             data = data.replace(b'softdepend: [WorldGuard, Vault]', b'softdepend: [WorldGuard, Vault, WorldEdit, FastAsyncWorldEdit]')
         out.writestr(info,data)
     out.writestr(base+'item/impl/BogatyrElytraFix.class', bogatyr_helper())

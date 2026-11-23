@@ -1,1 +1,1 @@
-package org.bukkit.entity; import org.bukkit.inventory.InventoryView; public interface Player { boolean isOnline(); void closeInventory(); InventoryView getOpenInventory(); }
+package org.bukkit.entity; import java.util.UUID; import org.bukkit.inventory.Inventory; import org.bukkit.inventory.InventoryView; public interface Player { boolean isOnline(); UUID getUniqueId(); InventoryView openInventory(Inventory inventory); void closeInventory(); InventoryView getOpenInventory(); }

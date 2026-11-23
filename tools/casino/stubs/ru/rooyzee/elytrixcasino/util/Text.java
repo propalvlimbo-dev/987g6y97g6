@@ -1,0 +1,1 @@
+package ru.rooyzee.elytrixcasino.util; import java.util.List; import net.kyori.adventure.text.Component; public class Text { public static Component linesComponent(List<String> lines) { String s=String.join("\n",lines); return ()->s; } }
