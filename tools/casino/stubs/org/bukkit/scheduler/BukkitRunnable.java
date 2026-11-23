@@ -1,0 +1,1 @@
+package org.bukkit.scheduler; import org.bukkit.plugin.Plugin; public abstract class BukkitRunnable implements Runnable { public abstract BukkitTask runTaskTimer(Plugin plugin,long delay,long period); }
