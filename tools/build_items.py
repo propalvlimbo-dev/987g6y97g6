@@ -6,7 +6,7 @@ from jawa.cf import ClassFile
 
 root = Path(__file__).resolve().parents[1]
 source = root / 'ElytrixItem-2.5.7.jar'
-target = root / 'finalbuild/ElytrixItem-fix6.jar'
+target = root / 'finalbuild/ElytrixItem-fix7.jar'
 base = 'ru/rooyzee/elytrixitem/'
 
 def replace_method(data, name, change):
@@ -113,7 +113,7 @@ def patch_trap(data):
             + b'\x0c' + u2(count+2) + u2(count+3) + b'\x0a' + u2(count+1) + u2(count+4)
             + utf('restore') + utf('(Lorg/bukkit/block/BlockState;ZZ)Z')
             + b'\x0c' + u2(count+6) + u2(count+7) + b'\x0a' + u2(count+1) + u2(count+8)
-            + utf('clearanceLimit') + utf('(Ljava/lang/Object;)I')
+            + utf('clearanceLimit') + utf('(L'+base+'item/impl/ExplosiveTrapZone;)I')
             + b'\x0c' + u2(count+10) + u2(count+11) + b'\x0a' + u2(count+1) + u2(count+12))
     def prepare(code):
         old = bytes.fromhex('b602159a0006a7015c')
@@ -148,7 +148,7 @@ with zipfile.ZipFile(source) as src, zipfile.ZipFile(target,'w',zipfile.ZIP_DEFL
         if info.filename == base+'item/ConsumableItems.class': data=arrows(data)
         if info.filename == base+'item/impl/ExplosiveTrapListener.class': data=patch_trap(data)
         if info.filename == 'plugin.yml':
-            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix6'")
+            data = data.replace(b"version: '2.5.7'", b"version: '2.5.7-fix7'")
             data = data.replace(b'softdepend: [WorldGuard, Vault]', b'softdepend: [WorldGuard, Vault, WorldEdit, FastAsyncWorldEdit]')
         out.writestr(info,data)
     out.writestr(base+'item/impl/BogatyrElytraFix.class', bogatyr_helper())

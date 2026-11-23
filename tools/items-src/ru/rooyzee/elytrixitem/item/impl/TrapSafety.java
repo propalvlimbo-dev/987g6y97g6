@@ -29,7 +29,7 @@ public final class TrapSafety {
         for (Block block : plan.keySet()) footprint.add(columnKey(block.getX(), block.getZ()));
         for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) {
             if (!footprint.contains(columnKey(x, z))) continue;
-            for (int y = Math.max(minY + 1, world.getMinHeight()); y < world.getMaxHeight(); y++) {
+            for (int y = Math.max(minY + 1, world.getMinHeight()), top = Math.min(maxY + 2, world.getMaxHeight() - 1); y <= top; y++) {
                 Block block = world.getBlockAt(x, y, z);
                 // Preserve the schematic even when a wall projects into a column.
                 // Include all non-air blocks, including plants, liquids and webs.
@@ -92,8 +92,8 @@ public final class TrapSafety {
     }
 
     // The original listener applies its no-place/no-flow protection to this
-    // upper bound. Extend protection above active traps to build height.
-    public static int clearanceLimit(Object zone) { return Integer.MAX_VALUE - 1; }
+    // upper bound. The original code adds one more to this value.
+    public static int clearanceLimit(ExplosiveTrapZone zone) { return zone.getMaxY() + 1; }
 
     private static boolean occupied(Block block) {
         int x = block.getX(), y = block.getY(), z = block.getZ();

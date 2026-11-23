@@ -20,6 +20,12 @@ public class CasinoTests {
  static class Spin extends BukkitRunnable implements SpinRegistry.Finishable {int finished;final P p;final String machine;final Inventory inv;Spin(P p,String machine,Inventory inv){this.p=p;this.machine=machine;this.inv=inv;}public UUID spinPlayer(){return p.id;}public String spinMachine(){return machine;}public Inventory spinInventory(){return inv;}public void run(){} public BukkitTask runTaskTimer(Plugin p,long d,long t){return new BukkitTask(){};}public void finishNow(){finished++;}}
  enum State {IDLE,WALKING,SPINNING,RETURNING}
  static class Display implements VirtualTextDisplay {int updates;String text;public void setText(Component c){updates++;text=c.contents();}}
+ static class Actions implements RouletteReactions.Actions {boolean spawned=true;int dances,returns;public boolean isSpawned(){return spawned;}public void startHome(org.bukkit.Location l,Object mode,Runnable end){returns++;end.run();}public void dance(int step){dances++;}}
+ static class TestScheduler implements BukkitScheduler {
+   final TreeMap<Long,List<Runnable>> tasks=new TreeMap<>();boolean fail;
+   public BukkitTask runTaskLater(Plugin plugin,Runnable task,long delay){if(fail)throw new IllegalStateException("scheduler unavailable");tasks.computeIfAbsent(delay,k->new ArrayList<>()).add(task);return new BukkitTask(){};}
+   void through(long tick){while(!tasks.isEmpty()&&tasks.firstKey()<=tick)for(Runnable r:tasks.pollFirstEntry().getValue())r.run();}
+ }
  public static void main(String[] args)throws Exception {
   UUID id=UUID.randomUUID();ActiveBetManager m=new ActiveBetManager();
   for(GameType type:GameType.values())check(m.tryAcquire(id,type,"same",100),"parallel modes");
@@ -49,8 +55,28 @@ public class CasinoTests {
   RouletteHologram.update(display,State.WALKING,defaults);check(display.text.equals("&f*идёт крутить рулетку*"),"walking text");
   int updates=display.updates;RouletteHologram.update(display,State.WALKING,defaults);check(display.updates==updates,"no repeated update");
   RouletteHologram.update(display,State.SPINNING,defaults);check(display.text.equals("&f*крутит рулетку*"),"spinning text");
+  RouletteHologram.watch(display);RouletteHologram.update(display,State.SPINNING,defaults);check(display.text.equals("&f*следит за рулеткой*"),"watching text");
   RouletteHologram.update(display,State.RETURNING,defaults);check(display.text.isEmpty(),"return hides hologram");
   RouletteHologram.update(display,State.IDLE,defaults);check(display.text.equals("default\nsecond line"),"restore default");
+  check(RouletteReactions.reaction(0,0).equals("*улыбается*") && RouletteReactions.reaction(0,1).equals("*хихикает*") && RouletteReactions.reaction(0,2).equals("*ехидно улыбнулся*"),"zero reactions");
+  check(RouletteReactions.reaction(2,0).equals("*лицо спокойное*") && RouletteReactions.reaction(2,1).equals("*подмигнул*") && RouletteReactions.reaction(2,2).equals("*рад за вас*"),"two reactions");
+  check(RouletteReactions.reaction(3,0).equals("*надорвался карман*") && RouletteReactions.reaction(3,1).equals("*лицо слегка недовольно*") && RouletteReactions.reaction(3,2).equals("*скрежет зубами*"),"three reactions");
+  TestScheduler scheduler=new TestScheduler();org.bukkit.Bukkit.scheduler=scheduler;Actions action=new Actions();int[] arrived={0};
+  RouletteReactions.schedule(action,new org.bukkit.Location(),new Object(),()->arrived[0]++,new Sector(5,1,"",Material.GOLD_BLOCK),null,display);
+  RouletteHologram.update(display,State.RETURNING,defaults);check(display.text.equals("&f*очень рад за вас*"),"jackpot reaction");
+  scheduler.through(99);check(action.dances==10&&action.returns==0,"dance five seconds before return");
+  scheduler.through(100);check(action.returns==1&&arrived[0]==1,"return after dance");
+  RouletteHologram.update(display,State.RETURNING,defaults);check(display.text.isEmpty(),"hide during walk home");
+  scheduler=new TestScheduler();org.bukkit.Bukkit.scheduler=scheduler;Actions standard=new Actions();
+  RouletteReactions.schedule(standard,new org.bukkit.Location(),new Object(),()->{},new Sector(3,1,"",Material.LIME_WOOL),null,display);
+  RouletteHologram.update(display,State.RETURNING,defaults);check(display.text.startsWith("&f*"),"result reaction shown");
+  scheduler.through(39);check(standard.returns==0&&standard.dances==0,"normal reaction waits");scheduler.through(40);check(standard.returns==1,"normal result returns home");
+  VirtualTextDisplay broken=c->{throw new RuntimeException("unavailable");};RouletteHologram.update(broken,State.RETURNING,defaults);
+  scheduler=new TestScheduler();org.bukkit.Bukkit.scheduler=scheduler;Actions cancelled=new Actions();
+  RouletteReactions.schedule(cancelled,new org.bukkit.Location(),new Object(),()->{},new Sector(0,1,"",Material.RED_WOOL),null,display);
+  RouletteReactions.cancel(cancelled);scheduler.through(100);check(cancelled.returns==0,"no stale return after despawn");
+  scheduler=new TestScheduler();scheduler.fail=true;org.bukkit.Bukkit.scheduler=scheduler;Actions fallback=new Actions();
+  RouletteReactions.schedule(fallback,new org.bukkit.Location(),new Object(),()->{},new Sector(2,1,"",Material.LIME_WOOL),null,display);check(fallback.returns==1,"return if scheduling fails");
   System.out.println("Casino isolated tests passed; slot winners="+winners+"/200000");
  }
 }

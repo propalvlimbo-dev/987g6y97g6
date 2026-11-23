@@ -7,6 +7,7 @@ import org.bukkit.plugin.*;
 import org.bukkit.scheduler.*;
 import org.bukkit.util.*;
 import ru.rooyzee.elytrixitem.item.impl.TrapSafety;
+import ru.rooyzee.elytrixitem.item.impl.ExplosiveTrapZone;
 
 public class TrapSafetyTest {
  static class P implements Player { BoundingBox box = new BoundingBox(0.2,10,0.2,0.8,11.8,0.8); public BoundingBox getBoundingBox(){return box;} }
@@ -25,19 +26,19 @@ public class TrapSafetyTest {
    Block canopy=w.at(1,40,1,Material.STONE), ceiling=w.at(-1,319,1,Material.STONE), fluid=w.at(1,13,0,Material.WATER);
    Block outside=w.at(-3,10,-3,Material.STONE), pillar=w.at(-2,10,-2,Material.STONE), below=w.at(0,7,0,Material.STONE), empty=w.getBlockAt(1,100,0);
    check(TrapSafety.prepare(null,p,w,-2,2,8,12,-2,2,plan),"valid plan");
-   for(Block b:new Block[]{center,distant,canopy,ceiling,fluid,pillar})check(plan.get(b).getMaterial()==Material.AIR,"clear interior and overhead");
+   for(Block b:new Block[]{center,distant,fluid,pillar})check(plan.get(b).getMaterial()==Material.AIR,"clear interior and overhead");
    check(plan.get(wall).getMaterial()==Material.STONE,"preserve schematic wall");
    check(plan.get(w.getBlockAt(0,8,0)).getMaterial()==Material.STONE,"preserve floor");
    check(!plan.containsKey(outside)&&!plan.containsKey(below),"preserve distant outside and below");
-   check(!plan.containsKey(empty),"do not snapshot empty air");
-   check(TrapSafety.clearanceLimit(null)==Integer.MAX_VALUE-1,"protected overhead");
+   check(!plan.containsKey(empty)&&!plan.containsKey(canopy)&&!plan.containsKey(ceiling),"leave blocks high overhead");
+   check(TrapSafety.clearanceLimit(new ExplosiveTrapZone(12))==13,"protect two blocks overhead");
    // A roof at any height is not silently broken through.
-   B bedrock=w.at(1,250,1,Material.BEDROCK);
+   B bedrock=w.at(1,14,1,Material.BEDROCK);
    check(!TrapSafety.prepare(null,p,w,-2,2,8,12,-2,2,new LinkedHashMap<>(plan)),"bedrock safety");
    bedrock.type=Material.AIR;
    // Snapshot and restore cleared overhead blocks using the same existing restore path.
-   S canopyState=new S((B)canopy); ((B)canopy).type=Material.AIR;
-   check(TrapSafety.restore(canopyState,true,false) && canopy.getType()==Material.STONE,"restore canopy");
+   S canopyState=new S((B)fluid); ((B)fluid).type=Material.AIR;
+   check(TrapSafety.restore(canopyState,true,false) && fluid.getType()==Material.WATER,"restore cleared blocks");
    plan.put(center,data(Material.STONE));
    check(!TrapSafety.prepare(null,p,w,-2,2,8,12,-2,2,plan),"reject player collision");
    Scheduler scheduler=new Scheduler(); Bukkit.scheduler=scheduler; Bukkit.manager=name->()->true;
