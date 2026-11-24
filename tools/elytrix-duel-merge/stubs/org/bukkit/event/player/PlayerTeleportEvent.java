@@ -1,0 +1,1 @@
+package org.bukkit.event.player; public class PlayerTeleportEvent extends PlayerMoveEvent {public enum TeleportCause{ENDER_PEARL,PLUGIN} public TeleportCause cause;public boolean cancelled;public TeleportCause getCause(){return cause;}public void setCancelled(boolean b){cancelled=b;} }

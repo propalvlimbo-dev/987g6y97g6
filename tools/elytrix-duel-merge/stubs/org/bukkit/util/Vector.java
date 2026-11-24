@@ -1,0 +1,1 @@
+package org.bukkit.util; public class Vector { double x,y,z; public Vector(double x,double y,double z){this.x=x;this.y=y;this.z=z;}public double getX(){return x;}public double getY(){return y;}public double getZ(){return z;}public Vector setX(double v){x=v;return this;}public Vector setY(double v){y=v;return this;}public Vector setZ(double v){z=v;return this;} }

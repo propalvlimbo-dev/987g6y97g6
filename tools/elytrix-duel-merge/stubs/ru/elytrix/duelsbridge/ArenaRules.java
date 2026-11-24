@@ -1,0 +1,2 @@
+package ru.elytrix.duelsbridge; import java.util.*;import org.bukkit.Location;import org.bukkit.entity.Player;
+class ArenaRules { Bounds bounds; Bounds resolve(Player p){return bounds;} static class Bounds { String world; double centerX,centerZ,radius,maxY,minY; Bounds(){} Bounds(String w,Location a,Location b,List<Location> p,double margin,double height,double drop){} boolean inside(Location p){double x=p.getX()-centerX,z=p.getZ()-centerZ;return x*x+z*z<=radius*radius && p.getY()>=minY && p.getY()<=maxY;} } }

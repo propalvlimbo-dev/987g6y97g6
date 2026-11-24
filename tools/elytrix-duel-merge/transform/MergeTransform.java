@@ -13,7 +13,7 @@ public final class MergeTransform {
    for(Path p:paths.filter(x->x.toString().endsWith(".class")).toList()) {
     String rel=root.relativize(p).toString().replace('\\','/');
     if(!rel.startsWith("ru/elytrix/duelsbridge/") && !rel.startsWith("dev/epicduels/")) continue;
-    if(p.getFileName().toString().startsWith("BridgeFiles") || p.getFileName().toString().startsWith("LegacyDataMigration") || p.getFileName().toString().startsWith("SafeWorldCopy")) continue;
+    if(p.getFileName().toString().startsWith("BridgeFiles") || p.getFileName().toString().startsWith("LegacyDataMigration") || p.getFileName().toString().startsWith("SafeWorldCopy") || p.getFileName().toString().startsWith("ArenaBoundary") || p.getFileName().toString().startsWith("TextFilter")) continue;
     ClassReader r=new ClassReader(Files.readAllBytes(p));
     ClassWriter w=new ClassWriter(r,ClassWriter.COMPUTE_MAXS);
     r.accept(new ClassVisitor(Opcodes.ASM9,w) {
@@ -28,12 +28,19 @@ public final class MergeTransform {
       return new MethodVisitor(Opcodes.ASM9,mv) {
        @Override public void visitCode() {
         super.visitCode();
+        int textArg = current.equals(BRIDGE) && name.equals("colorize") && desc.equals("(Ljava/lang/String;)Ljava/lang/String;") ? 0 : current.equals("dev/epicduels/gui/PresentationText") && name.equals("render") ? 0 : current.equals("dev/epicduels/manager/GUIManager") && name.equals("colorize") ? 1 : -1;
+        if(textArg>=0) { super.visitVarInsn(Opcodes.ALOAD,textArg);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","clean","(Ljava/lang/String;)Ljava/lang/String;",false);super.visitVarInsn(Opcodes.ASTORE,textArg); }
+        if(current.equals("ru/elytrix/duelsbridge/ArenaRules$Bounds") && name.equals("<init>") && desc.equals("(Ljava/lang/String;Lorg/bukkit/Location;Lorg/bukkit/Location;Ljava/util/List;DDD)V")) {
+         for(int i=0;i<2;i++) {super.visitVarInsn(Opcodes.ALOAD,4);super.visitVarInsn(Opcodes.ALOAD,2+i);super.visitInsn(i==0?Opcodes.ICONST_0:Opcodes.ICONST_1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","first","(Ljava/util/List;Lorg/bukkit/Location;I)Lorg/bukkit/Location;",false);super.visitVarInsn(Opcodes.ASTORE,2+i);}
+        }
         if(current.equals(BRIDGE) && name.equals("onEnable") && desc.equals("()V")) {
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/LegacyDataMigration","migrate","(L"+BRIDGE+";)V",false);
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESPECIAL,EPIC,"onEnable","()V",false);changed[1]++;
         }
        }
        @Override public void visitInsn(int opcode) {
+        if(current.equals("dev/epicduels/i18n/Messages") && name.equals("raw") && desc.equals("(Ljava/lang/String;)Ljava/lang/String;") && opcode==Opcodes.ARETURN)
+         super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","clean","(Ljava/lang/String;)Ljava/lang/String;",false);
         if(current.equals(BRIDGE) && name.equals("onDisable") && desc.equals("()V") && opcode==Opcodes.RETURN) {
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESPECIAL,EPIC,"onDisable","()V",false);changed[2]++;
         }
@@ -56,6 +63,8 @@ public final class MergeTransform {
           "getDataFolder","()Ljava/io/File;", "saveDefaultConfig","()V", "saveConfig","()V").get(method).equals(descriptor)) {
             opcode=Opcodes.INVOKESTATIC; owner=FILES; descriptor="(L"+BRIDGE+";"+descriptor.substring(1);itf=false;changed[4]++;
         }
+        if(opcode==Opcodes.INVOKESTATIC && owner.equals("net/kyori/adventure/text/Component") && method.equals("text") && descriptor.equals("(Ljava/lang/String;Lnet/kyori/adventure/text/format/TextColor;[Lnet/kyori/adventure/text/format/TextDecoration;)Lnet/kyori/adventure/text/TextComponent;"))
+          super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","decorations","([Lnet/kyori/adventure/text/format/TextDecoration;)[Lnet/kyori/adventure/text/format/TextDecoration;",false);
         super.visitMethodInsn(opcode,owner,method,descriptor,itf);
        }
       };

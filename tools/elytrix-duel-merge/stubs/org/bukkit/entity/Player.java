@@ -1,0 +1,1 @@
+package org.bukkit.entity; import java.util.UUID; import org.bukkit.Location; import org.bukkit.util.Vector; public interface Player { UUID getUniqueId(); Location getLocation(); boolean teleport(Location l); Vector getVelocity(); void setVelocity(Vector v); }

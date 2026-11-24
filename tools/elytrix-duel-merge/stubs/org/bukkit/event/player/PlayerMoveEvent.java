@@ -1,0 +1,1 @@
+package org.bukkit.event.player; import org.bukkit.Location; import org.bukkit.entity.Player; public class PlayerMoveEvent { public Player player;public Location from,to;public Player getPlayer(){return player;} public Location getTo(){return to;} public Location getFrom(){return from;} public void setTo(Location l){to=l;} }
