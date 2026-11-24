@@ -32,9 +32,6 @@ public final class ArenaBoundary {
   // A player may immediately enter a different battle; a cached boundary can belong to the old one.
   ArenaRules.Bounds b=rules.resolve(player);
   Location to=event.getTo();
-  if(b!=null && to!=null && to.getWorld()!=null && b.world.equals(to.getWorld().getName()) && mace(b))
-   MaceHeightDamage.observe(player.getUniqueId(), b.world, to.getY(), System.nanoTime());
-  else MaceHeightDamage.clear(player.getUniqueId());
   if(!SharedBattleWorld.enforceBoundary(player) && !BridgeFiles.getConfig(plugin).getBoolean("protection.leave",true))return;
   if(b==null || to==null || to.getWorld()==null || !b.world.equals(to.getWorld().getName()) || inside(to,b))return;
   Location bounded=clamp(to,b);

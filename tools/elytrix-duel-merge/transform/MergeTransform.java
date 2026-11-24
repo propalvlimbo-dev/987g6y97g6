@@ -23,14 +23,29 @@ public final class MergeTransform {
       if(name.equals(BRIDGE)) { if(!parent.equals("org/bukkit/plugin/java/JavaPlugin"))throw new IllegalStateException("Unexpected superclass"); parent=EPIC;changed[0]++; }
       super.visit(version,access,name,signature,parent,interfaces);
      }
+     @Override public void visitEnd() {
+      if(current.equals("ru/elytrix/duelsbridge/ArenaRules")) for(String type:List.of("PlayerMoveEvent","PlayerTeleportEvent")) {
+       MethodVisitor m=super.visitMethod(Opcodes.ACC_PUBLIC,"elytrixHeight"+type,"(Lorg/bukkit/event/player/"+type+";)V",null,null);
+       AnnotationVisitor a=m.visitAnnotation("Lorg/bukkit/event/EventHandler;",true);a.visitEnum("priority","Lorg/bukkit/event/EventPriority;","MONITOR");a.visit("ignoreCancelled",true);a.visitEnd();
+       m.visitCode();m.visitVarInsn(Opcodes.ALOAD,0);m.visitVarInsn(Opcodes.ALOAD,1);m.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/MaceHeightDamage","onMovement","(Lru/elytrix/duelsbridge/ArenaRules;Lorg/bukkit/event/player/PlayerMoveEvent;)V",false);m.visitInsn(Opcodes.RETURN);m.visitMaxs(0,0);m.visitEnd();
+      }
+      super.visitEnd();
+     }
      @Override public MethodVisitor visitMethod(int access,String name,String desc,String sig,String[] ex) {
       MethodVisitor mv=super.visitMethod(access,name,desc,sig,ex);
       return new MethodVisitor(Opcodes.ASM9,mv) {
        boolean dropPotionResult;
+       int arenaNameCalls;
        @Override public void visitCode() {
         super.visitCode();
         int textArg = current.equals(BRIDGE) && name.equals("colorize") && desc.equals("(Ljava/lang/String;)Ljava/lang/String;") ? 0 : current.equals("dev/epicduels/gui/PresentationText") && name.equals("render") ? 0 : current.equals("dev/epicduels/manager/GUIManager") && name.equals("colorize") ? 1 : -1;
         if(textArg>=0) { super.visitVarInsn(Opcodes.ALOAD,textArg);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","clean","(Ljava/lang/String;)Ljava/lang/String;",false);super.visitVarInsn(Opcodes.ASTORE,textArg); }
+        if(current.equals("dev/epicduels/gui/PresentationText") && name.equals("render") && desc.equals("(Ljava/lang/String;Ljava/util/Map;)Lnet/kyori/adventure/text/Component;")) {
+         super.visitVarInsn(Opcodes.ALOAD,1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","displayValues","(Ljava/util/Map;)Ljava/util/Map;",false);super.visitVarInsn(Opcodes.ASTORE,1);
+        }
+        if(current.equals("dev/epicduels/i18n/Messages") && name.equals("unparsed") && desc.equals("(Ljava/lang/String;Ljava/lang/Object;)Lnet/kyori/adventure/text/minimessage/tag/resolver/TagResolver;")) {
+         super.visitVarInsn(Opcodes.ALOAD,0);super.visitVarInsn(Opcodes.ALOAD,1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","displayToken","(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;",false);super.visitVarInsn(Opcodes.ASTORE,1);
+        }
         if(current.equals("ru/elytrix/duelsbridge/ArenaRules$Bounds") && name.equals("<init>") && desc.equals("(Ljava/lang/String;Lorg/bukkit/Location;Lorg/bukkit/Location;Ljava/util/List;DDD)V")) {
          for(int i=0;i<2;i++) {super.visitVarInsn(Opcodes.ALOAD,4);super.visitVarInsn(Opcodes.ALOAD,2+i);super.visitInsn(i==0?Opcodes.ICONST_0:Opcodes.ICONST_1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","first","(Ljava/util/List;Lorg/bukkit/Location;I)Lorg/bukkit/Location;",false);super.visitVarInsn(Opcodes.ASTORE,2+i);}
         }
@@ -50,6 +65,8 @@ public final class MergeTransform {
         if(current.equals("ru/elytrix/duelsbridge/ArenaRules") && name.equals("maxHeight") && desc.equals("(Ljava/lang/Object;)D") && opcode==Opcodes.DRETURN) {
          super.visitVarInsn(Opcodes.ALOAD,1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","effectiveHeight","(DLjava/lang/Object;)D",false);
         }
+        if(current.equals("ru/elytrix/duelsbridge/Duels") && name.equals("arenasReport") && desc.equals("()Ljava/lang/String;") && opcode==Opcodes.ARETURN)
+         super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","displayArenaReport","(Ljava/lang/String;)Ljava/lang/String;",false);
         if(current.equals("dev/epicduels/i18n/Messages") && name.equals("raw") && desc.equals("(Ljava/lang/String;)Ljava/lang/String;") && opcode==Opcodes.ARETURN)
          super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","clean","(Ljava/lang/String;)Ljava/lang/String;",false);
         if(current.equals(BRIDGE) && name.equals("onDisable") && desc.equals("()V") && opcode==Opcodes.RETURN) {
@@ -81,6 +98,12 @@ public final class MergeTransform {
         if(opcode==Opcodes.INVOKESTATIC && owner.equals("net/kyori/adventure/text/Component") && method.equals("text") && descriptor.equals("(Ljava/lang/String;Lnet/kyori/adventure/text/format/TextColor;[Lnet/kyori/adventure/text/format/TextDecoration;)Lnet/kyori/adventure/text/TextComponent;"))
           super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","decorations","([Lnet/kyori/adventure/text/format/TextDecoration;)[Lnet/kyori/adventure/text/format/TextDecoration;",false);
         super.visitMethodInsn(opcode,owner,method,descriptor,itf);
+        boolean arenaLabel = descriptor.equals("()Ljava/lang/String;") && (current.equals("ru/elytrix/duelsbridge/Arenas") && Set.of("command","list","setPoint","readyReport").contains(name) && owner.equals("ru/elytrix/duelsbridge/Arenas") && method.equals("arenaName") || current.equals("dev/epicduels/manager/GUIManager") && name.equals("openSpectateMenu") && method.equals("getArenaName"));
+        if(current.equals("dev/epicduels/manager/GUIManager") && owner.equals("dev/epicduels/model/Arena") && method.equals("getName") && descriptor.equals("()Ljava/lang/String;")) {
+         if(name.equals("openArenaSelect"))arenaLabel=arenaNameCalls++==0;
+         else if(name.equals("openArenaList"))arenaLabel=true;
+        }
+        if(arenaLabel)super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","displayArena","(Ljava/lang/String;)Ljava/lang/String;",false);
        }
       };
      }
