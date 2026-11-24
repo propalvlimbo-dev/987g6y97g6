@@ -1,0 +1,17 @@
+package ru.elytrix.bots;
+
+import com.google.common.collect.ImmutableMultimap;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import java.util.UUID;
+
+/** Signed Mojang texture for rooyzee. */
+final class BotSkin {
+    private static final String VALUE = "ewogICJ0aW1lc3RhbXAiIDogMTc5NTUxNTQ1NDQ5NSwKICAicHJvZmlsZUlkIiA6ICJhYjdkNTUyMWEyZGI0Y2M0OTE2OWE4ODUxZGMxODUzZiIsCiAgInByb2ZpbGVOYW1lIiA6ICJyb295emVlIiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzlmOWRkMTJiNzIyZmRmYzFhNzJlNTgwOGFkNTE3MDQ2OTYwZTYyZDAzMmViZGU1MmQwMDViNjU0YWZjOGFlNzMiCiAgICB9LAogICAgIkNBUEUiIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzI4ZGU0YTgxNjg4YWQxOGI0OWU3MzVhMjczZTA4NmMxOGYxZTM5NjY5NTYxMjNjY2I1NzQwMzRjMDZmNWQzMzYiCiAgICB9CiAgfQp9";
+    private static final String SIGNATURE = "Jn88+TJSvnQm9TJm0b29DU/Y6OVVAAlyxrLpV/D7Ubvz7dg3m/rcVzaNSfP8CBqnsgdeNh608zqlOedrqZ8OvxORB8Nq1pf0mQsbXxPudpFbOhfFX1bIQin9jqgQsOXIQwTectF6nyVy1tnWPvS2+8UpNLxMe9HNmrLoMDA2kruYySZbXtHaNrc8zVxCMXBex1l+qCXdvN55L6MMCbxPFkQPoTKuYmSTcCC/2LRAwGNNpZ6kziYkI2Nd6BqtUdztgIfGLrfLn72zoMONtds4Qcw2iwTT4j4H4DK6nKvEVRHEYwxh1dLGcPDuwBlJmZMHqkYHBaZocxL8SErJD2eTAz6+DX2WgXzVUcb7gJv8ZnkZR3Hpom07EctLMZnq9znlRd8q4J1pM4x2KoaCBLKhyX0ZC3tAyC+ugk1B504y5AU5XBkO5rUtxOBX6wUwipBgTsWwPeAZ4SjL2CX1utCax45trP6l65ohcmrbX9BY4F3WVU++F0d2p4NCka9iglpM/LogJD+N5X9CC1vtuC5nvrm/Afx9xYYSb5Va9bJHOtKQMqPy/BzlPS1EOE3Tl4XkEIbqDS7R9ALiFO5TM+YF/ZVVaXbnjSFuzjqi8Q82XwkhV8SGb8g7q02vwEA8e5bT5vgopHiqdADKa0I+dITGgguiMVFWPpfp58zF4o+jDyc=";
+    static GameProfile profile(UUID id, String name) {
+        Property texture = new Property("textures", VALUE, SIGNATURE);
+        return new GameProfile(id, name, new PropertyMap(ImmutableMultimap.of("textures", texture)));
+    }
+}
