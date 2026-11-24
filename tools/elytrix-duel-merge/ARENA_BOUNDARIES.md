@@ -6,7 +6,9 @@ For the **Булава / mace kit only**, the duel boundary has no upper or lowe
 
 The default non-mace ceiling remains `protection.max-height` above arena spawn; the old `protection.mace-height` setting is no longer used as a ceiling for the mace kit. The bottom setting `protection.min-drop` still applies to other kits. Out-of-bounds pearls are cancelled, so players are not moved to spawn. Exceptional out-of-bounds recovery moves them toward the boundary, not to a spawn.
 
-The template world `duel` remains required: instance worlds are copied from it. Do not delete or rename it. The server still saves it before copying and the copy is not guaranteed to be an atomic live snapshot.
+The current shipped build still copies the `duel` template world for each battle; the requested shared-world rewrite is not finished. Do not delete or rename the template. The server still saves it before copying and the copy is not guaranteed to be an atomic live snapshot.
+
+The build script now adds a defensive deletion guard to ArenaManager's instance cleanup and world-folder deletion. It refuses attempts to delete the `duel` world, its ancestors or its descendants (including canonical symlink aliases); standard instance cleanup remains permitted. This is defense in depth for these plugin paths only, not a general guarantee against server operators or other plugins. The guard has not been integrated into a newly shipped JAR or tested on a real server.
 
 Player-facing legacy bold formatting is filtered within the duel plugin; items and text owned by other plugins are not modified. Existing permissions and placeholder names remain unchanged.
 
