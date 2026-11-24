@@ -7,7 +7,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 final class TrainingPlayer extends ServerPlayer {
+    void jumpForCombat() { jumpFromGround(); }
     long nextAttackTick;
+    int attacksMade;
     private net.minecraft.world.phys.Vec3 pendingVelocity;
     void acceptKnockback(net.minecraft.world.phys.Vec3 velocity) { pendingVelocity = velocity; }
     TrainingPlayer(MinecraftServer server, ServerLevel world, GameProfile profile) {
@@ -18,6 +20,10 @@ final class TrainingPlayer extends ServerPlayer {
     @Override public void tick() {
         if (pendingVelocity != null) { setDeltaMovement(pendingVelocity); pendingVelocity = null; }
         super.tick();
+        double previousY = getY();
         doTick();
+        // Real clients report falling via movement packets; this bot has no client.
+        if (onGround()) fallDistance = 0;
+        else if (getY() < previousY) fallDistance += previousY - getY();
     }
 }

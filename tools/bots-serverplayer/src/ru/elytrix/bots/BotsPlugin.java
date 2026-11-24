@@ -1,6 +1,7 @@
 package ru.elytrix.bots;
 
 import net.minecraft.world.InteractionHand;
+import dev.enco.greatcombat.api.CombatPreStartEvent;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -30,11 +31,15 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     private NamespacedKey marker, ownerKey;
     private static final String PINK = "§x§F§8§B§E§F§B";
     private static final class Menu implements InventoryHolder {
-        final boolean settings;
-        Menu(boolean settings) { this.settings = settings; }
+        final int page;
+        Menu(int page) { this.page = page; }
         public Inventory getInventory() { return null; }
     }
     @Override public void onEnable() {
+        if (!getServer().getPluginManager().isPluginEnabled("GreatCombat")) {
+            getLogger().severe("GreatCombat не запущен: плагин ботов отключён, чтобы не нарушать антирелог.");
+            getServer().getPluginManager().disablePlugin(this); return;
+        }
         marker = new NamespacedKey(this,"training_bot"); ownerKey = new NamespacedKey(this,"owner");
         getServer().getPluginManager().registerEvents(this,this);
         getServer().getScheduler().runTaskTimer(this,this::maintain,1,1);
@@ -42,25 +47,44 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     @Override public void onDisable() { for (UUID id : new ArrayList<>(bots.keySet())) remove(id); }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player p)) { sender.sendMessage("§cКоманда только для игроков."); return true; }
-        openMenu(p, false); return true;
+        openMenu(p, 0); return true;
     }
     private String settingPath(Player player, String key) { return "players." + player.getUniqueId() + "." + key; }
     private boolean enabled(Player player, String key) { return getConfig().getBoolean(settingPath(player,key), false); }
     private void toggle(Player player, String key) {
-        getConfig().set(settingPath(player,key), !enabled(player,key)); saveConfig(); openMenu(player,true);
+        getConfig().set(settingPath(player,key), !enabled(player,key)); saveConfig(); openMenu(player,1);
     }
-    private void openMenu(Player p, boolean settings) {
-        Inventory menu = getServer().createInventory(new Menu(settings),54,PINK+"§l"+(settings?"Настройка бота":"Тренировочный бот"));
+    private String mode(Player p) {
+        String value=getConfig().getString(settingPath(p,"mode"),"custom");
+        return Set.of("custom","crit","combo","pro","noob").contains(value) ? value : "custom";
+    }
+    private void setMode(Player p,String mode) {
+        getConfig().set(settingPath(p,"mode"),mode); saveConfig();
+        TrainingPlayer bot=bots.get(p.getUniqueId());
+        if(bot!=null) { bot.nextAttackTick=0; bot.attacksMade=0; }
+        openMenu(p,2);
+    }
+    private void openMenu(Player p, int page) {
+        Inventory menu = getServer().createInventory(new Menu(page),54,PINK+"§l"+(page==2?"Режим боя":page==1?"Настройка бота":"Тренировочный бот"));
         ItemStack black=item(Material.BLACK_STAINED_GLASS_PANE,"§r");
         ItemStack purple=item(Material.PURPLE_STAINED_GLASS_PANE,"§r");
         for(int i=0;i<54;i++) {
             int row=i/9,col=i%9;
             if(row==0 || row==5 || col==0 || col==8) menu.setItem(i,row<3?black:purple);
         }
-        if(settings) {
+        if(page==2) {
+            String current=mode(p);
+            menu.setItem(19,modeItem(Material.DIAMOND_SWORD,"Криты","Криты с прыжка",current.equals("crit")));
+            menu.setItem(21,modeItem(Material.IRON_SWORD,"Комба","Быстрые атаки с разбега",current.equals("combo")));
+            menu.setItem(23,modeItem(Material.NETHERITE_SWORD,"Профи","Криты, комбо и движение",current.equals("pro")));
+            menu.setItem(25,modeItem(Material.WOODEN_SWORD,"Нуб","Медленнее и иногда промахивается",current.equals("noob")));
+            menu.setItem(31,modeItem(Material.COMPARATOR,"Свои настройки","Использовать ваши переключатели",current.equals("custom")));
+            menu.setItem(49,item(Material.ARROW,"§7« "+PINK+"Назад §7»",PINK+"§l┃ ","§7● §fВернуться к настройкам"));
+        } else if(page==1) {
             menu.setItem(20,option(Material.FEATHER,"Бот бегает за вами","Бот будет бежать к вам",enabled(p,"follow")));
             menu.setItem(22,option(Material.IRON_SWORD,"Бот бьёт вас","Бот будет атаковать вас",enabled(p,"attack")));
             menu.setItem(24,option(Material.ENDER_EYE,"Бот смотрит на вас","Бот будет следить за вами взглядом",enabled(p,"look")));
+            menu.setItem(40,item(Material.NETHERITE_SWORD,"§7« "+PINK+"Режимы боя §7»",PINK+"§l┃ ",PINK+"§l┃ §fВыберите стиль бота",PINK+"§l┃ §fРежимы заменяют переключатели выше",PINK+"§l┃ ","§7● §fНажмите для выбора"));
             menu.setItem(49,item(Material.ARROW,"§7« "+PINK+"Назад §7»",PINK+"§l┃ ","§7● §fВернуться в меню бота"));
         } else {
             menu.setItem(20,item(Material.PLAYER_HEAD,"§7« "+PINK+"Создать бота §7»",PINK+"§l┃ ",PINK+"§l┃ §fЛичный бессмертный бот",PINK+"§l┃ ","§7● §fНажмите для создания"));
@@ -78,16 +102,21 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     private ItemStack option(Material material,String name,String description,boolean on) {
         return item(material,"§7« "+PINK+name+" §7»",PINK+"§l┃ ",PINK+"§l┃ §f"+description,PINK+"§l┃ §fСостояние: "+(on?"§aВключено":"§cВыключено"),PINK+"§l┃ ","§7● §fНажмите для переключения");
     }
+    private ItemStack modeItem(Material material,String title,String description,boolean active) {
+        return item(material,"§7« "+PINK+title+" §7»",PINK+"§l┃ ",PINK+"§l┃ §f"+description,PINK+"§l┃ §fРежим: "+(active?"§aВыбран":"§7Не выбран"),PINK+"§l┃ ","§7● §fНажмите для выбора");
+    }
     @EventHandler public void click(InventoryClickEvent event) {
         if (!(event.getView().getTopInventory().getHolder() instanceof Menu menu)) return;
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player p)) return;
         int slot=event.getRawSlot();
-        if(menu.settings) {
-            if(slot==20) toggle(p,"follow"); else if(slot==22) toggle(p,"attack"); else if(slot==24) toggle(p,"look"); else if(slot==49) openMenu(p,false);
+        if(menu.page==2) {
+            if(slot==19) setMode(p,"crit"); else if(slot==21) setMode(p,"combo"); else if(slot==23) setMode(p,"pro"); else if(slot==25) setMode(p,"noob"); else if(slot==31) setMode(p,"custom"); else if(slot==49) openMenu(p,1);
+        } else if(menu.page==1) {
+            if(slot==20) toggle(p,"follow"); else if(slot==22) toggle(p,"attack"); else if(slot==24) toggle(p,"look"); else if(slot==40) openMenu(p,2); else if(slot==49) openMenu(p,0);
         } else {
             if(slot==20) { p.closeInventory(); spawn(p); }
-            else if(slot==22) openMenu(p,true);
+            else if(slot==22) openMenu(p,1);
             else if(slot==24) { p.closeInventory(); remove(p.getUniqueId()); p.sendMessage(PINK+"Бот убран."); }
             else if(slot==49) p.closeInventory();
         }
@@ -168,23 +197,40 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         if(pitch) bot.setXRot((float)-Math.toDegrees(Math.atan2(dy,Math.sqrt(dx*dx+dz*dz))));
     }
     private void behave(TrainingPlayer bot, Player owner) {
-        boolean follow=enabled(owner,"follow"), attack=enabled(owner,"attack"), look=enabled(owner,"look");
+        String mode=mode(owner); boolean custom=mode.equals("custom");
+        boolean follow=!custom || enabled(owner,"follow");
+        boolean attack=!custom || enabled(owner,"attack");
+        boolean look=!custom || enabled(owner,"look");
         Player fake=bot.getBukkitEntity();
         double distance=fake.getLocation().distanceSquared(owner.getLocation());
-        boolean targetValid=!owner.isDead() && owner.getGameMode()!=GameMode.SPECTATOR;
-        boolean chasing=follow && targetValid && distance>5.76 && distance<4096;
-        if (look && targetValid) face(bot,owner,true);
-        else if (chasing) face(bot,owner,false);
-        bot.zza=chasing?1.0f:0.0f;
-        bot.xxa=0; bot.setSprinting(chasing);
-        bot.setJumping(chasing && bot.horizontalCollision && bot.onGround());
+        boolean valid=!owner.isDead() && owner.getGameMode()!=GameMode.SPECTATOR;
         long now=bot.level().getServer().getTickCount();
-        if(attack && targetValid && distance<=9.0 && fake.hasLineOfSight(owner) && now>=bot.nextAttackTick) {
-            face(bot,owner,true);
-            bot.nextAttackTick=now+20;
-            bot.attack(((CraftPlayer)owner).getHandle());
-            bot.swing(InteractionHand.MAIN_HAND);
+        boolean criticalMode=mode.equals("crit") || (mode.equals("pro") && bot.attacksMade%3==0);
+        boolean inRange=distance<=9.0 && fake.hasLineOfSight(owner);
+        boolean prepareCritical=attack && valid && criticalMode && inRange && now>=bot.nextAttackTick;
+        boolean chasing=follow && valid && distance>5.76 && distance<4096;
+        if (look && valid) face(bot,owner,true); else if (chasing) face(bot,owner,false);
+        bot.zza=chasing?(mode.equals("noob")?0.65f:1.0f):0.0f;
+        bot.xxa=mode.equals("pro") && valid && distance<16 && !prepareCritical ? ((now/24)%2==0?0.55f:-0.55f):0;
+        // A genuine vanilla critical requires falling and not sprinting.
+        bot.setSprinting(chasing && !prepareCritical);
+        if (valid && bot.onGround() && (prepareCritical || (chasing && bot.horizontalCollision))) bot.jumpForCombat();
+        if (!attack || !valid || !inRange || now<bot.nextAttackTick || bot.getAttackStrengthScale(0.5f)<0.9f) return;
+        if (criticalMode && !(bot.fallDistance>0 && !bot.onGround() && !bot.isSprinting() && !bot.onClimbable() && !bot.isInWater() && !bot.isMobilityRestricted() && !bot.isPassenger())) return;
+        face(bot,owner,true);
+        bot.nextAttackTick=now+(mode.equals("noob")?26:mode.equals("combo")?12:mode.equals("pro")?11:20);
+        bot.attacksMade++;
+        if (mode.equals("noob") && ThreadLocalRandom.current().nextDouble()<0.35) {
+            bot.swing(InteractionHand.MAIN_HAND); return;
         }
+        bot.attack(((CraftPlayer)owner).getHandle());
+        bot.swing(InteractionHand.MAIN_HAND);
+    }
+    // Cancel only the GreatCombat tag for this owner/bot pair; never clear an existing PvP tag.
+    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    public void combat(CombatPreStartEvent event) {
+        UUID attacker=event.getDamager().getUniqueId(), target=event.getTarget().getUniqueId();
+        if (Objects.equals(owners.get(attacker),target) || Objects.equals(owners.get(target),attacker)) event.setCancelled(true);
     }
     @EventHandler public void interact(PlayerInteractEntityEvent e) { if (owners.containsKey(e.getRightClicked().getUniqueId())) e.setCancelled(true); }
     @EventHandler public void quit(PlayerQuitEvent e) { remove(e.getPlayer().getUniqueId()); }

@@ -1,7 +1,8 @@
 name: ElytrixBotsTrain
-version: 2.1-test
+version: 2.2-test
 main: ru.elytrix.bots.BotsPlugin
 api-version: '1.21.11'
+depend: [GreatCombat]
 commands:
   bots:
     description: Личный тренировочный бот
