@@ -240,7 +240,12 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     private void registerGreatCombat() {
         try {
             org.bukkit.plugin.Plugin plugin = getServer().getPluginManager().getPlugin("GreatCombat");
-            Class<?> type = Class.forName("dev.enco.greatcombat.api.CombatPreStartEvent", true, plugin.getClass().getClassLoader());
+            Class<?> type;
+            try {
+                type = Class.forName("dev.enco.greatcombat.api.events.CombatPreStartEvent", true, plugin.getClass().getClassLoader());
+            } catch (ClassNotFoundException missingV2) {
+                type = Class.forName("dev.enco.greatcombat.api.CombatPreStartEvent", true, plugin.getClass().getClassLoader());
+            }
             if (!Event.class.isAssignableFrom(type) || !Cancellable.class.isAssignableFrom(type)) throw new IllegalStateException("Event is not cancellable");
             java.lang.reflect.Method damager = type.getMethod("getDamager"), target = type.getMethod("getTarget");
             if (!Player.class.isAssignableFrom(damager.getReturnType()) || !Player.class.isAssignableFrom(target.getReturnType())) throw new IllegalStateException("Unexpected GreatCombat API");

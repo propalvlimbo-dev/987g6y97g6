@@ -1,0 +1,9 @@
+package test;
+import org.bukkit.*;import org.bukkit.entity.Player;import org.bukkit.event.*;import org.bukkit.event.player.PlayerJoinEvent;import org.bukkit.plugin.java.JavaPlugin;import java.lang.reflect.*;import java.util.*;import net.minecraft.server.level.ServerPlayer;
+public class ProbeV2 extends JavaPlugin implements Listener {
+ public void onEnable(){getServer().getPluginManager().registerEvents(this,this);}
+ @EventHandler public void join(PlayerJoinEvent e){Player p=e.getPlayer();if(!p.getName().equals("TestOwner"))return;getServer().getScheduler().runTaskLater(this,()->{try{
+ World w=p.getWorld();for(int x=-5;x<=5;x++)for(int z=-5;z<=5;z++){w.getBlockAt(x,99,z).setType(Material.STONE);for(int y=100;y<104;y++)w.getBlockAt(x,y,z).setType(Material.AIR);}p.teleport(new Location(w,.5,100,.5,0,0));
+ JavaPlugin bp=(JavaPlugin)getServer().getPluginManager().getPlugin("ElytrixBotsTrain");bp.getConfig().set("players."+p.getUniqueId()+".mode","crit");Method spawn=bp.getClass().getDeclaredMethod("spawn",Player.class);spawn.setAccessible(true);spawn.invoke(bp,p);Field f=bp.getClass().getDeclaredField("bots");f.setAccessible(true);ServerPlayer bot=(ServerPlayer)((Map<?,?>)f.get(bp)).get(p.getUniqueId());if(bot==null)throw new Exception("bot missing");Player fake=bot.getBukkitEntity();Object gc=getServer().getPluginManager().getPlugin("GreatCombat");Method start=gc.getClass().getMethod("start",Player.class,Player.class);Field tags=gc.getClass().getField("combat");Set<UUID> set=(Set<UUID>)tags.get(gc);start.invoke(gc,p,fake);start.invoke(gc,fake,p);getLogger().info("PROBE NEW TAG="+set.contains(p.getUniqueId()));set.add(p.getUniqueId());start.invoke(gc,p,fake);getLogger().info("PROBE RETAIN TAG="+set.contains(p.getUniqueId()));set.clear();
+ }catch(Throwable t){getLogger().log(java.util.logging.Level.SEVERE,"PROBE FAILURE",t);}},30L);}
+}
