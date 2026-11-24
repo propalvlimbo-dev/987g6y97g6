@@ -1,0 +1,1 @@
+package ru.elytrix.duelsbridge; import java.util.Map; import org.bukkit.plugin.Plugin; import org.bukkit.entity.Player; public class ElytrixDuelsBridge implements Plugin { static String colorize(String s){return s;} Map<String,String> menuArgsFor(Player p,String s){return null;} }

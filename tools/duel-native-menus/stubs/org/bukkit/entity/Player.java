@@ -1,0 +1,1 @@
+package org.bukkit.entity; import java.util.UUID; import org.bukkit.inventory.*; public interface Player extends HumanEntity { UUID getUniqueId(); InventoryView openInventory(Inventory i); void closeInventory(); boolean isOnline(); boolean performCommand(String c); }
