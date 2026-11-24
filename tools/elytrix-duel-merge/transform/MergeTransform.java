@@ -13,7 +13,7 @@ public final class MergeTransform {
    for(Path p:paths.filter(x->x.toString().endsWith(".class")).toList()) {
     String rel=root.relativize(p).toString().replace('\\','/');
     if(!rel.startsWith("ru/elytrix/duelsbridge/") && !rel.startsWith("dev/epicduels/")) continue;
-    if(p.getFileName().toString().startsWith("BridgeFiles") || p.getFileName().toString().startsWith("LegacyDataMigration") || p.getFileName().toString().startsWith("SafeWorldCopy") || p.getFileName().toString().startsWith("ArenaBoundary") || p.getFileName().toString().startsWith("TextFilter")) continue;
+    if(p.getFileName().toString().startsWith("BridgeFiles") || p.getFileName().toString().startsWith("LegacyDataMigration") || p.getFileName().toString().startsWith("SafeWorldCopy") || p.getFileName().toString().startsWith("ArenaBoundary") || p.getFileName().toString().startsWith("TextFilter") || p.getFileName().toString().startsWith("MaceHeightDamage")) continue;
     ClassReader r=new ClassReader(Files.readAllBytes(p));
     ClassWriter w=new ClassWriter(r,ClassWriter.COMPUTE_MAXS);
     r.accept(new ClassVisitor(Opcodes.ASM9,w) {
@@ -33,12 +33,21 @@ public final class MergeTransform {
         if(current.equals("ru/elytrix/duelsbridge/ArenaRules$Bounds") && name.equals("<init>") && desc.equals("(Ljava/lang/String;Lorg/bukkit/Location;Lorg/bukkit/Location;Ljava/util/List;DDD)V")) {
          for(int i=0;i<2;i++) {super.visitVarInsn(Opcodes.ALOAD,4);super.visitVarInsn(Opcodes.ALOAD,2+i);super.visitInsn(i==0?Opcodes.ICONST_0:Opcodes.ICONST_1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","first","(Ljava/util/List;Lorg/bukkit/Location;I)Lorg/bukkit/Location;",false);super.visitVarInsn(Opcodes.ASTORE,2+i);}
         }
+        if(current.equals("ru/elytrix/duelsbridge/ArenaRules") && name.equals("start") && desc.equals("()V")) {
+         super.visitVarInsn(Opcodes.ALOAD,0);super.visitVarInsn(Opcodes.ALOAD,0);super.visitFieldInsn(Opcodes.GETFIELD,current,"plugin","L"+BRIDGE+";");super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/MaceHeightDamage","start","(L"+current+";L"+BRIDGE+";)V",false);
+        }
         if(current.equals(BRIDGE) && name.equals("onEnable") && desc.equals("()V")) {
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/LegacyDataMigration","migrate","(L"+BRIDGE+";)V",false);
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESPECIAL,EPIC,"onEnable","()V",false);changed[1]++;
         }
        }
        @Override public void visitInsn(int opcode) {
+        if(current.equals(BRIDGE) && name.equals("round") && desc.equals("(D)Ljava/lang/String;") && opcode==Opcodes.ARETURN) {
+         super.visitVarInsn(Opcodes.DLOAD,0);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","displayLimit","(Ljava/lang/String;D)Ljava/lang/String;",false);
+        }
+        if(current.equals("ru/elytrix/duelsbridge/ArenaRules") && name.equals("maxHeight") && desc.equals("(Ljava/lang/Object;)D") && opcode==Opcodes.DRETURN) {
+         super.visitVarInsn(Opcodes.ALOAD,1);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","effectiveHeight","(DLjava/lang/Object;)D",false);
+        }
         if(current.equals("dev/epicduels/i18n/Messages") && name.equals("raw") && desc.equals("(Ljava/lang/String;)Ljava/lang/String;") && opcode==Opcodes.ARETURN)
          super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/TextFilter","clean","(Ljava/lang/String;)Ljava/lang/String;",false);
         if(current.equals(BRIDGE) && name.equals("onDisable") && desc.equals("()V") && opcode==Opcodes.RETURN) {

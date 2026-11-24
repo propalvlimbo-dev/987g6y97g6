@@ -1,0 +1,1 @@
+package ru.elytrix.duelsbridge; class Duels { static Object call(Object obj,String name,Object... args){ try{return obj.getClass().getMethod(name).invoke(obj,args);}catch(ReflectiveOperationException ex){return null;} } }

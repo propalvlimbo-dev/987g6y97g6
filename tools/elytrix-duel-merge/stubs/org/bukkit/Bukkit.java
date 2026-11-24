@@ -1,0 +1,1 @@
+package org.bukkit; import java.util.*; import org.bukkit.entity.Player;import org.bukkit.scheduler.BukkitScheduler; public final class Bukkit { public static Collection<? extends Player> getOnlinePlayers(){return List.of();}public static BukkitScheduler getScheduler(){return null;} }

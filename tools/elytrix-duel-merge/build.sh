@@ -36,7 +36,7 @@ needle='  party:\n'; assert text.count(needle)==1
 text=text.replace(needle,'  duelx:\n    description: Elytrix duel menu actions\n    aliases: [dx]\n'+needle)
 p.write_text(text,encoding='utf8')
 helpers=stage/'helper/ru/elytrix/duelsbridge'
-for name in ('BridgeFiles', 'SafeWorldCopy', 'LegacyDataMigration', 'ArenaBoundary', 'TextFilter'):
+for name in ('BridgeFiles', 'SafeWorldCopy', 'LegacyDataMigration', 'ArenaBoundary', 'TextFilter', 'MaceHeightDamage'):
  matches=list(helpers.glob(name+'*.class'))
  assert matches, name
  for p in matches: (dest/'ru/elytrix/duelsbridge'/p.name).write_bytes(p.read_bytes())

@@ -1,7 +1,7 @@
 package ru.elytrix.duelsbridge;
 import java.util.*;import java.nio.file.*;import org.bukkit.*;import org.bukkit.entity.Player;import org.bukkit.util.Vector;import org.bukkit.event.player.*;
 public class ArenaBoundaryTest {
- static class P implements Player{UUID id=UUID.randomUUID();Location loc;Vector v=new Vector(0,2,0);int teleports;P(Location l){loc=l;}public UUID getUniqueId(){return id;} public Location getLocation(){return loc;} public Vector getVelocity(){return v;}public void setVelocity(Vector v){this.v=v;}public boolean teleport(Location l){teleports++;loc=l;return true;}}
+ static class P implements Player{UUID id=UUID.randomUUID();Location loc;Vector v=new Vector(0,2,0);int teleports;P(Location l){loc=l;}public UUID getUniqueId(){return id;} public Location getLocation(){return loc;} public Vector getVelocity(){return v;}public void setVelocity(Vector v){this.v=v;}public boolean teleport(Location l){teleports++;loc=l;return true;} public boolean isDead(){return false;} public void damage(double amount){}}
  static void ck(boolean x,String s){if(!x)throw new AssertionError(s);}
  public static void main(String[] args)throws Exception{
   World w=()->"arena_instance_test";P p=new P(new Location(w,0,100,0)); ArenaRules r=new ArenaRules();ArenaRules.Bounds b=new ArenaRules.Bounds(); b.world=w.getName();b.centerX=0;b.centerZ=0;b.radius=20;b.minY=75;b.maxY=115;r.bounds=b;

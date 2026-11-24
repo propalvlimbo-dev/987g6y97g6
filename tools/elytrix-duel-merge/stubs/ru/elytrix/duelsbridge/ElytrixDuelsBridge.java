@@ -1,1 +1,1 @@
-package ru.elytrix.duelsbridge; import java.io.*; import java.util.logging.Logger; public class ElytrixDuelsBridge { public File getDataFolder(){return null;} public InputStream getResource(String s){return null;} public Logger getLogger(){return null;} }
+package ru.elytrix.duelsbridge; import java.io.*; import java.util.logging.Logger; import org.bukkit.plugin.Plugin; public class ElytrixDuelsBridge implements Plugin { public File getDataFolder(){return null;} public InputStream getResource(String s){return null;} public Logger getLogger(){return null;} }
