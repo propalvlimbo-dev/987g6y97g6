@@ -8,7 +8,7 @@ public final class MergeTransform {
  static final String EPIC="dev/epicduels/EpicDuels";
  static final String FILES="ru/elytrix/duelsbridge/BridgeFiles";
  public static void main(String[] args) throws Exception {
-  Path root=Path.of(args[0]); int[] changed={0,0,0,0,0};
+  Path root=Path.of(args[0]); int[] changed={0,0,0,0,0,0};
   try(var paths=Files.walk(root)) {
    for(Path p:paths.filter(x->x.toString().endsWith(".class")).toList()) {
     String rel=root.relativize(p).toString().replace('\\','/');
@@ -26,6 +26,7 @@ public final class MergeTransform {
      @Override public MethodVisitor visitMethod(int access,String name,String desc,String sig,String[] ex) {
       MethodVisitor mv=super.visitMethod(access,name,desc,sig,ex);
       return new MethodVisitor(Opcodes.ASM9,mv) {
+       boolean dropPotionResult;
        @Override public void visitCode() {
         super.visitCode();
         int textArg = current.equals(BRIDGE) && name.equals("colorize") && desc.equals("(Ljava/lang/String;)Ljava/lang/String;") ? 0 : current.equals("dev/epicduels/gui/PresentationText") && name.equals("render") ? 0 : current.equals("dev/epicduels/manager/GUIManager") && name.equals("colorize") ? 1 : -1;
@@ -42,6 +43,7 @@ public final class MergeTransform {
         }
        }
        @Override public void visitInsn(int opcode) {
+        if(dropPotionResult) { if(opcode!=Opcodes.POP)throw new IllegalStateException("Unexpected removePotionEffect result use"); dropPotionResult=false; return; }
         if(current.equals(BRIDGE) && name.equals("round") && desc.equals("(D)Ljava/lang/String;") && opcode==Opcodes.ARETURN) {
          super.visitVarInsn(Opcodes.DLOAD,0);super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/ArenaBoundary","displayLimit","(Ljava/lang/String;D)Ljava/lang/String;",false);
         }
@@ -64,6 +66,10 @@ public final class MergeTransform {
         super.visitInvokeDynamicInsn(n,d,bootstrap,values);
        }
        @Override public void visitMethodInsn(int opcode,String owner,String method,String descriptor,boolean itf) {
+        if(owner.equals("org/bukkit/entity/Player") && method.equals("removePotionEffect") && descriptor.equals("(Lorg/bukkit/potion/PotionEffectType;)Z")) {
+         if(!current.equals("ru/elytrix/duelsbridge/Effects") || !name.equals("clear"))throw new IllegalStateException("Unexpected potion effect call");
+         descriptor="(Lorg/bukkit/potion/PotionEffectType;)V";dropPotionResult=true;changed[5]++;
+        }
         if(current.equals(BRIDGE) && name.equals("<init>") && opcode==Opcodes.INVOKESPECIAL && owner.equals("org/bukkit/plugin/java/JavaPlugin") && method.equals("<init>")) { owner=EPIC;changed[3]++; }
         if(owner.equals(BRIDGE) && opcode==Opcodes.INVOKEVIRTUAL && Map.of(
           "getConfig","()Lorg/bukkit/configuration/file/FileConfiguration;",
@@ -82,7 +88,7 @@ public final class MergeTransform {
     Files.write(p,w.toByteArray());
    }
   }
-  System.out.println("super,enable,disable,constructor,config/data calls = "+Arrays.toString(changed));
-  if(changed[0]!=1 || changed[1]!=1 || changed[2]<1 || changed[3]!=1 || changed[4]<20) throw new IllegalStateException("Unexpected transform counts");
+  System.out.println("super,enable,disable,constructor,config/data,potion API = "+Arrays.toString(changed));
+  if(changed[0]!=1 || changed[1]!=1 || changed[2]<1 || changed[3]!=1 || changed[4]<20 || changed[5]!=1) throw new IllegalStateException("Unexpected transform counts");
  }
 }
