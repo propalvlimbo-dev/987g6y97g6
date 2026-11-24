@@ -1,0 +1,1 @@
+package ru.elytrix.duelsbridge; import java.io.*; import java.util.logging.Logger; public class ElytrixDuelsBridge { public File getDataFolder(){return null;} public InputStream getResource(String s){return null;} public Logger getLogger(){return null;} }
