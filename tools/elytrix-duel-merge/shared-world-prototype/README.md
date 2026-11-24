@@ -1,6 +1,8 @@
 # Shared-world migration: NOT integrated
 
-The shipped JAR still uses instance-world copies. `SlotAllocator` is an isolated prototype, not included by build.sh. It assigns complete pairs by battle UUID, keeps reservations until explicit cleanup, and refuses reconfiguration while battles are reserved. With 8 configured points it supports four pairs; incomplete pairs are skipped. No geometrical isolation is implied by a pair of points.
+The shipped JAR still uses instance-world copies. `SlotAllocator` and `SharedArenaRegistry` are isolated prototypes, not included by build.sh. `SharedArenaRegistry` snapshots point coordinates, reserves pairs atomically by battle UUID, keeps reservations until explicit cleanup, and refuses configuration changes while battles are reserved. With 8 configured points it supports four pairs; incomplete pairs are skipped without changing subsequent point numbers. It rejects coordinates associated with another world. No geometrical isolation is implied by a pair of points. The repository's older `spawns.yml` backup contains six points; the server's current file may contain eight.
+
+The registry is deliberately not wired into battle creation or cleanup: it does not yet prevent an existing listener from sending a player to a wrong pair, remove projectiles, restrict interactions between fights, protect blocks, or restore inventories. Do not deploy it as a finished shared-world implementation.
 
 Do not substitute `duel` for an instance name without further work. Audit findings that must be addressed before shipping:
 
@@ -13,6 +15,7 @@ Do not substitute `duel` for an instance name without further work. Audit findin
 Prototype test (Java 21+, using ECJ):
 
 ```
-java -jar "$ECJ" -21 -d /tmp/slot-test shared-world-prototype/SlotAllocator.java shared-world-prototype/SlotAllocatorTest.java
-java -cp /tmp/slot-test ru.elytrix.duelsbridge.shared.SlotAllocatorTest
+java -jar "$ECJ" -21 -d /tmp/slot-test shared-world-prototype/*.java
+java -Xverify:all -cp /tmp/slot-test ru.elytrix.duelsbridge.shared.SlotAllocatorTest
+java -Xverify:all -cp /tmp/slot-test ru.elytrix.duelsbridge.shared.SharedArenaRegistryTest
 ```
