@@ -1,0 +1,8 @@
+name: ElytrixBotsTrain
+version: 2.0-test
+main: ru.elytrix.bots.BotsPlugin
+api-version: '1.21.11'
+commands:
+  bots:
+    description: Личный тренировочный бот
+    usage: /bots
