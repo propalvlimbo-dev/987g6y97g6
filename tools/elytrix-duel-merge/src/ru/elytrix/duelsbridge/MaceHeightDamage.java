@@ -5,7 +5,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
-/** Server-thread timer for continuous time above Y=104 in a mace duel. */
+/** Server-thread timer for continuous time above Y=104 in any active duel. */
 public final class MaceHeightDamage {
  private static final double HEIGHT=104.0;
  private static final long INTERVAL=5_000_000_000L;
@@ -21,7 +21,7 @@ public final class MaceHeightDamage {
  public static void onMovement(ArenaRules rules,org.bukkit.event.player.PlayerMoveEvent event){
   Player player=event.getPlayer();if(player==null)return;
   Location to=event.getTo();ArenaRules.Bounds b=rules.resolve(player);
-  if(player.isDead() || b==null || !ArenaBoundary.mace(b) || to==null || to.getWorld()==null || !b.world.equals(to.getWorld().getName())){clear(player.getUniqueId());return;}
+  if(player.isDead() || b==null || to==null || to.getWorld()==null || !b.world.equals(to.getWorld().getName())){clear(player.getUniqueId());return;}
   observe(player.getUniqueId(),b.world,to.getY(),System.nanoTime());
  }
  static void observe(UUID id,String world,double y,long now) {
@@ -45,7 +45,7 @@ public final class MaceHeightDamage {
   Set<UUID> retained=new HashSet<>();
   for(Player player:players) {
    UUID id=player.getUniqueId();ArenaRules.Bounds b=rules.resolve(player);Location loc=player.getLocation();
-   if(player.isDead() || b==null || !ArenaBoundary.mace(b) || loc==null || loc.getWorld()==null || !b.world.equals(loc.getWorld().getName())) {clear(id);continue;}
+   if(player.isDead() || b==null || loc==null || loc.getWorld()==null || !b.world.equals(loc.getWorld().getName())) {clear(id);continue;}
    retained.add(id);
    int action=step(id,b.world,loc.getY(),now);
    if(action<0)player.sendMessage("§dДуэли §8» §eТы слишком высоко! Спустись до Y=104, иначе через 5 секунд начнётся нарастающий урон.");

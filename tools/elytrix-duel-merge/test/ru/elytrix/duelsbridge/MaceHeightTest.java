@@ -38,8 +38,15 @@ public class MaceHeightTest {
   p.loc=new Location(w,0,104,0);MaceHeightDamage.tick(r,List.of(p),s+16_000_000_000L);
   p.loc=new Location(w,0,105,0);MaceHeightDamage.tick(r,List.of(p),s+17_000_000_000L);
   MaceHeightDamage.tick(r,List.of(p),s+22_000_000_000L);check(p.warnings==2 && p.damage==2,"new warning after descent");
-  b.maxY=107;MaceHeightDamage.tick(r,List.of(p),s+30_000_000_000L);check(p.damage==2,"other kit does not receive damage");
-  b.maxY=Double.POSITIVE_INFINITY;MaceHeightDamage.tick(r,List.of(p),s+31_000_000_000L);check(p.warnings==2,"new timer on return to mace");
+  b.maxY=107;MaceHeightDamage.clear(p.id);
+  MaceHeightDamage.tick(r,List.of(p),s+30_000_000_000L);
+  MaceHeightDamage.tick(r,List.of(p),s+35_000_000_000L);check(p.warnings==3 && p.damage==2,"other kit gets warning");
+  MaceHeightDamage.tick(r,List.of(p),s+40_000_000_000L);check(p.damage==3 && p.lastDamage==1,"other kit gets first damage");
+  MaceHeightDamage.tick(r,List.of(p),s+45_000_000_000L);check(p.damage==4 && p.lastDamage==2,"other kit gets increasing damage");
+  p.velocity=new Vector(0,3,0);move.to=new Location(w,0,200,0);ArenaBoundary.move(r,plugin,Map.of(),move);
+  check(move.to.getY()<107 && p.velocity.getY()==0,"other kit retains upper barrier");
+  r.bounds=null;MaceHeightDamage.tick(r,List.of(p),s+46_000_000_000L);r.bounds=b;
+  MaceHeightDamage.tick(r,List.of(p),s+47_000_000_000L);check(p.warnings==3 && p.damage==4,"leaving battle resets timer");
   MaceHeightDamage.clear(p.id);MaceHeightDamage.step(p.id,w.getName(),105,s);
   PlayerTeleportEvent down=new PlayerTeleportEvent();down.player=p;down.to=new Location(w,0,104,0);MaceHeightDamage.onMovement(r,down);
   check(MaceHeightDamage.step(p.id,w.getName(),105,s+20_000_000_000L)==0,"successful downward teleport resets timer");
