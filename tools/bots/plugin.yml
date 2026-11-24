@@ -1,0 +1,9 @@
+name: ElytrixBotsTrain
+version: 1.0.0
+main: ru.elytrix.bots.BotsPlugin
+api-version: '1.21.11'
+depend: [VirtualEntityApi, BLib]
+commands:
+  bots:
+    description: Личный тренировочный бот
+    usage: /bots
