@@ -7,10 +7,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 final class TrainingPlayer extends ServerPlayer {
+    long nextAttackTick;
     private net.minecraft.world.phys.Vec3 pendingVelocity;
     void acceptKnockback(net.minecraft.world.phys.Vec3 velocity) { pendingVelocity = velocity; }
     TrainingPlayer(MinecraftServer server, ServerLevel world, GameProfile profile) {
         super(server, world, profile, ClientInformation.createDefault());
+        this.entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7f);
     }
     @Override public boolean allowsListing() { return false; }
     @Override public void tick() {
