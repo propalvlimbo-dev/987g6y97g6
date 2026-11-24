@@ -38,7 +38,16 @@ public final class TrainingProtectionTest {
   ((Set<UUID>)get(arena,"internal")).add(id); PlayerTeleportEvent own=new PlayerTeleportEvent(p,l,l,PlayerTeleportEvent.TeleportCause.PLUGIN); arena.teleport(own); check(!own.isCancelled(),"internal teleport allowed");
   Block block=(Block)fake(Block.class,id); BlockBreakEvent be=new BlockBreakEvent(block,p); arena.blockBreak(be); check(be.isCancelled(),"break blocked");
   BlockBreakEvent normal=new BlockBreakEvent(block,outsider); arena.blockBreak(normal); check(!normal.isCancelled(),"other player break unchanged");
-  System.out.println("Training command, teleport and block protection passed");
+  Field serverField=Bukkit.class.getDeclaredField("server"); serverField.setAccessible(true); serverField.set(null,fake(Server.class,id));
+  List<String> messages=new ArrayList<>(); UUID entrantId=UUID.randomUUID();
+  Player entrant=(Player)Proxy.newProxyInstance(Player.class.getClassLoader(),new Class<?>[]{Player.class},(proxy,m,a)-> {
+   if(m.getName().equals("getUniqueId")) return entrantId;
+   if(m.getName().equals("sendMessage") && a!=null && a.length==1 && a[0] instanceof String s) messages.add(s);
+   if(m.getReturnType()==boolean.class) return false; if(m.getReturnType()==int.class) return 0; return null;
+  });
+  Method enter=TrainingArena.class.getDeclaredMethod("enter",Player.class); enter.setAccessible(true); enter.invoke(arena,entrant);
+  check(messages.size()==1 && messages.get(0).contains("мир duel"),"another active session must not trigger a capacity rejection");
+  System.out.println("Training command, teleport, block protection and capacity gate passed");
  }
  static Object get(Object o,String name) throws Exception { Field f=TrainingArena.class.getDeclaredField(name); f.setAccessible(true); return f.get(o); }
 }

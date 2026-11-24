@@ -89,7 +89,6 @@ public final class TrainingArena implements Listener {
     }
     private void enter(Player p) {
         if(file(p).exists()) { restore(p); return; }
-        if(!active.isEmpty()) { p.sendMessage("§cТренировочная арена занята. Подождите."); return; }
         World w=Bukkit.getWorld("duel");
         if(w==null || p.isDead() || p.getWorld().equals(w)) { p.sendMessage("§cВойти сейчас нельзя: проверьте мир duel и завершите текущую дуэль."); return; }
         Location destination=new Location(w,-400,101,0,p.getLocation().getYaw(),0);
