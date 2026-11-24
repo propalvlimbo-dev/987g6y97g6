@@ -1,7 +1,6 @@
 package ru.elytrix.bots;
 
 import net.minecraft.world.InteractionHand;
-import dev.enco.greatcombat.api.CombatPreStartEvent;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -29,6 +28,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     private final Map<UUID,TrainingPlayer> bots = new HashMap<>();
     private final Map<UUID,UUID> owners = new HashMap<>();
     private NamespacedKey marker, ownerKey;
+    private boolean combatReady;
     private static final String PINK = "§x§F§8§B§E§F§B";
     private static final class Menu implements InventoryHolder {
         final int page;
@@ -42,6 +42,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         }
         marker = new NamespacedKey(this,"training_bot"); ownerKey = new NamespacedKey(this,"owner");
         getServer().getPluginManager().registerEvents(this,this);
+        registerGreatCombat();
         getServer().getScheduler().runTaskTimer(this,this::maintain,1,1);
     }
     @Override public void onDisable() { for (UUID id : new ArrayList<>(bots.keySet())) remove(id); }
@@ -123,6 +124,9 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     }
     @EventHandler public void drag(InventoryDragEvent event) { if(event.getView().getTopInventory().getHolder() instanceof Menu) event.setCancelled(true); }
     private void spawn(Player owner) {
+        if (!combatReady || !getServer().getPluginManager().isPluginEnabled("GreatCombat")) {
+            owner.sendMessage("§cБот недоступен: не удалось подключить API GreatCombat. Сообщите администратору."); return;
+        }
         remove(owner.getUniqueId());
         Location base=owner.getLocation(); org.bukkit.util.Vector direction=base.getDirection().setY(0);
         if (direction.lengthSquared() < 0.001) direction.setZ(1); direction.normalize().multiply(2);
@@ -182,6 +186,11 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         bot.remove(RemovalReason.DISCARDED);
     }
     private void maintain() {
+        if (!getServer().getPluginManager().isPluginEnabled("GreatCombat")) {
+            combatReady = false;
+            for (UUID id : new ArrayList<>(bots.keySet())) remove(id);
+            return;
+        }
         for (UUID id : new ArrayList<>(bots.keySet())) {
             TrainingPlayer bot=bots.get(id); Player owner=Bukkit.getPlayer(id);
             if(owner==null || !owner.isOnline() || !owner.getWorld().equals(bot.getBukkitEntity().getWorld()) || bot.isRemoved() || bot.getY()<bot.level().getMinY()-16) { remove(id); continue; }
@@ -226,11 +235,30 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         bot.attack(((CraftPlayer)owner).getHandle());
         bot.swing(InteractionHand.MAIN_HAND);
     }
-    // Cancel only the GreatCombat tag for this owner/bot pair; never clear an existing PvP tag.
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
-    public void combat(CombatPreStartEvent event) {
-        UUID attacker=event.getDamager().getUniqueId(), target=event.getTarget().getUniqueId();
-        if (Objects.equals(owners.get(attacker),target) || Objects.equals(owners.get(target),attacker)) event.setCancelled(true);
+    // Load from GreatCombat itself: some server plugin class loaders do not expose its API to us.
+    @SuppressWarnings("unchecked")
+    private void registerGreatCombat() {
+        try {
+            org.bukkit.plugin.Plugin plugin = getServer().getPluginManager().getPlugin("GreatCombat");
+            Class<?> type = Class.forName("dev.enco.greatcombat.api.CombatPreStartEvent", true, plugin.getClass().getClassLoader());
+            if (!Event.class.isAssignableFrom(type) || !Cancellable.class.isAssignableFrom(type)) throw new IllegalStateException("Event is not cancellable");
+            java.lang.reflect.Method damager = type.getMethod("getDamager"), target = type.getMethod("getTarget");
+            if (!Player.class.isAssignableFrom(damager.getReturnType()) || !Player.class.isAssignableFrom(target.getReturnType())) throw new IllegalStateException("Unexpected GreatCombat API");
+            getServer().getPluginManager().registerEvent((Class<? extends Event>)type, this, EventPriority.HIGHEST, (listener, event) -> {
+                try {
+                    Player attacker = (Player) damager.invoke(event), victim = (Player) target.invoke(event);
+                    if (attacker != null && victim != null && (Objects.equals(owners.get(attacker.getUniqueId()), victim.getUniqueId()) || Objects.equals(owners.get(victim.getUniqueId()), attacker.getUniqueId()))) ((Cancellable) event).setCancelled(true);
+                } catch (ReflectiveOperationException | RuntimeException failure) {
+                    ((Cancellable) event).setCancelled(true);
+                    combatReady = false;
+                    for (UUID id : new ArrayList<>(bots.keySet())) remove(id);
+                    getLogger().log(java.util.logging.Level.SEVERE, "Ошибка API GreatCombat: боты удалены и отключены", failure);
+                }
+            }, this, true);
+            combatReady = true;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException failure) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Не удалось подключить API GreatCombat; создание ботов отключено. Проверьте версию GreatCombat.", failure);
+        }
     }
     @EventHandler public void interact(PlayerInteractEntityEvent e) { if (owners.containsKey(e.getRightClicked().getUniqueId())) e.setCancelled(true); }
     @EventHandler public void quit(PlayerQuitEvent e) { remove(e.getPlayer().getUniqueId()); }
