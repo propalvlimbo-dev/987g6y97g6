@@ -5,7 +5,7 @@ runtime="${1:?usage: build.sh /path/to/leaf-runtime}"
 : "${JAVA:?set JAVA to the Java 21 binary}"
 : "${ECJ:?set ECJ to the Eclipse JDT compiler jar}"
 classes="$(mktemp -d)"; trap 'rm -rf "$classes"' EXIT
-cp="$(find "$runtime/libraries" -type f -name '*.jar' -printf '%p:' )$runtime/versions/1.21.11/leaf-1.21.11.jar"
+cp="$(find "$runtime/libraries" -type f -name '*.jar' -printf '%p:' )$runtime/versions/1.21.11/leaf-1.21.11.jar:${PROTOCOLLIB:?set PROTOCOLLIB to ProtocolLib.jar}"
 "$JAVA" -cp "$ECJ" org.eclipse.jdt.internal.compiler.batch.Main -21 -encoding UTF-8 -classpath "$cp" -d "$classes" $(find "$root/tools/bots-serverplayer/src" -name '*.java')
 CLASSES="$classes" ROOT="$root" python3 - <<'PY'
 import os

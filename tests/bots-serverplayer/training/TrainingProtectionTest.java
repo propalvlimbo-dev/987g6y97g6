@@ -14,6 +14,8 @@ public final class TrainingProtectionTest {
   return Proxy.newProxyInstance(cls.getClassLoader(),new Class<?>[]{cls},(proxy,m,a)->{
    if(m.getName().equals("getUniqueId")) return id;
    if(m.getName().equals("getServer")) return fake(Server.class,id);
+   if(m.getName().equals("getPluginManager")) return fake(org.bukkit.plugin.PluginManager.class,id);
+   if(m.getName().equals("isPluginEnabled")) return true;
    if(m.getName().equals("getOnlinePlayers")) return List.of();
    if(m.getName().equals("hashCode")) return System.identityHashCode(proxy);
    if(m.getName().equals("equals")) return proxy==a[0];
@@ -45,9 +47,12 @@ public final class TrainingProtectionTest {
    if(m.getName().equals("sendMessage") && a!=null && a.length==1 && a[0] instanceof String s) messages.add(s);
    if(m.getReturnType()==boolean.class) return false; if(m.getReturnType()==int.class) return 0; return null;
   });
+  field(arena,"quietReady",true);
   Method enter=TrainingArena.class.getDeclaredMethod("enter",Player.class); enter.setAccessible(true); enter.invoke(arena,entrant);
   check(messages.size()==1 && messages.get(0).contains("мир duel"),"another active session must not trigger a capacity rejection");
-  System.out.println("Training command, teleport, block protection and capacity gate passed");
+  messages.clear(); field(arena,"quietReady",false); enter.invoke(arena,entrant);
+  check(messages.size()==1 && messages.get(0).contains("ProtocolLib"),"missing sound filter must refuse entry");
+  System.out.println("Training command, teleport, block protection, capacity and quiet-mode gate passed");
  }
  static Object get(Object o,String name) throws Exception { Field f=TrainingArena.class.getDeclaredField(name); f.setAccessible(true); return f.get(o); }
 }

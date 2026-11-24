@@ -27,16 +27,24 @@ public final class TrainingArena implements Listener {
     private final Set<UUID> internal=new HashSet<>(), restoring=new HashSet<>(), waitingRespawn=new HashSet<>();
     private final Set<UUID> hints=new HashSet<>();
     private final File directory;
+    private boolean quietReady;
+    private static final String PINK="§x§F§8§B§E§F§B";
     private TrainingArena(JavaPlugin p) { plugin=p; directory=new File(p.getDataFolder(),"training-backups"); }
     public static void install(JavaPlugin p) {
         instance=new TrainingArena(p); Bukkit.getPluginManager().registerEvents(instance,p);
+        if(Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) {
+            try { QuietSounds.install(p); instance.quietReady=true; }
+            catch(LinkageError | RuntimeException ex) { p.getLogger().log(java.util.logging.Level.SEVERE,"ProtocolLib несовместим: тихая тренировка недоступна",ex); }
+        } else p.getLogger().warning("ProtocolLib не запущен: вход на тихую тренировку отключён.");
         Bukkit.getScheduler().runTaskTimer(p,instance::tick,1,20);
         for(Player player:Bukkit.getOnlinePlayers()) if(instance.file(player).exists()) Bukkit.getScheduler().runTask(p,()->instance.restore(player));
     }
     public static void shutdown() {
         if(instance==null) return;
         for(UUID id:new ArrayList<>(instance.active.keySet())) { Player p=Bukkit.getPlayer(id); if(p!=null && !p.isDead()) instance.restore(p); }
+        for(UUID id:new ArrayList<>(instance.active.keySet())) instance.unhide(id);
         for(BossBar bar:instance.active.values()) bar.removeAll();
+        if(instance.quietReady) QuietSounds.clear();
     }
     public static boolean command(CommandSender sender,String[] args) {
         if(instance==null) return false;
@@ -55,13 +63,25 @@ public final class TrainingArena implements Listener {
     }
     private static final class Entry implements InventoryHolder { public Inventory getInventory(){return null;} }
     private void openEntrance(Player p) {
-        Inventory menu=Bukkit.createInventory(new Entry(),27,"§dТренировка");
-        ItemStack item=new ItemStack(Material.LIME_CONCRETE); ItemMeta meta=item.getItemMeta(); meta.setDisplayName("§aВОЙТИ НА ТРЕНИРОВКУ"); item.setItemMeta(meta);
-        menu.setItem(13,item); p.openInventory(menu);
+        Inventory menu=Bukkit.createInventory(new Entry(),45,PINK+"Тренировка");
+        ItemStack black=decoration(Material.BLACK_STAINED_GLASS_PANE);
+        ItemStack purple=decoration(Material.PURPLE_STAINED_GLASS_PANE);
+        for(int slot=0;slot<45;slot++) {
+            int row=slot/9,col=slot%9;
+            if(row==0 || row==4 || col==0 || col==8) menu.setItem(slot,row<2?black:purple);
+        }
+        ItemStack item=new ItemStack(Material.LIME_CONCRETE); ItemMeta meta=item.getItemMeta();
+        meta.setDisplayName("§7« §aВОЙТИ НА ТРЕНИРОВКУ §7»");
+        meta.setLore(List.of(PINK+"┃ ",PINK+"┃ §fЛичный тренировочный бот",PINK+"┃ §fАлмазный меч и общая арена",PINK+"┃ §7Во время тренировки звуки отключены",PINK+"┃ ","§7● §fНажмите для входа"));
+        item.setItemMeta(meta); menu.setItem(22,item); p.openInventory(menu);
+        p.playSound(p.getLocation(),Sound.BLOCK_AMETHYST_BLOCK_CHIME,0.35f,1.4f);
+    }
+    private ItemStack decoration(Material material) {
+        ItemStack item=new ItemStack(material); ItemMeta meta=item.getItemMeta(); meta.setDisplayName("§r"); item.setItemMeta(meta); return item;
     }
     @EventHandler public void menu(InventoryClickEvent e) {
         if(!(e.getView().getTopInventory().getHolder() instanceof Entry)) return;
-        e.setCancelled(true); if(e.getRawSlot()==13 && e.getWhoClicked() instanceof Player p) { p.closeInventory(); enter(p); }
+        e.setCancelled(true); if(e.getRawSlot()==22 && e.getWhoClicked() instanceof Player p) { p.closeInventory(); enter(p); }
     }
     @EventHandler public void menuDrag(InventoryDragEvent e) { if(e.getView().getTopInventory().getHolder() instanceof Entry) e.setCancelled(true); }
     private File file(Player p) { return new File(directory,p.getUniqueId()+".yml"); }
@@ -72,7 +92,7 @@ public final class TrainingArena implements Listener {
         y.set("cursor",p.getItemOnCursor()); y.set("held",p.getInventory().getHeldItemSlot());
         y.set("health",p.getHealth()); y.set("food",p.getFoodLevel()); y.set("saturation",p.getSaturation()); y.set("exhaustion",p.getExhaustion());
         y.set("level",p.getLevel()); y.set("exp",p.getExp()); y.set("totalExp",p.getTotalExperience());
-        y.set("gamemode",p.getGameMode().name()); y.set("allowFlight",p.getAllowFlight()); y.set("flying",p.isFlying());
+        y.set("collidable",p.isCollidable()); y.set("gamemode",p.getGameMode().name()); y.set("allowFlight",p.getAllowFlight()); y.set("flying",p.isFlying());
         y.set("fire",p.getFireTicks()); y.set("fall",p.getFallDistance()); y.set("effects",new ArrayList<>(p.getActivePotionEffects()));
         File tmp=new File(directory,p.getUniqueId()+".tmp");
         try { y.save(tmp); try { Files.move(tmp.toPath(),file(p).toPath(),StandardCopyOption.ATOMIC_MOVE); }
@@ -89,6 +109,7 @@ public final class TrainingArena implements Listener {
     }
     private void enter(Player p) {
         if(file(p).exists()) { restore(p); return; }
+        if(!quietReady || !Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) { p.sendMessage("§cТихая тренировка недоступна: необходим совместимый ProtocolLib. Сообщите администратору."); return; }
         World w=Bukkit.getWorld("duel");
         if(w==null || p.isDead() || p.getWorld().equals(w)) { p.sendMessage("§cВойти сейчас нельзя: проверьте мир duel и завершите текущую дуэль."); return; }
         Location destination=new Location(w,-400,101,0,p.getLocation().getYaw(),0);
@@ -101,10 +122,11 @@ public final class TrainingArena implements Listener {
         }
         if(!room) { p.sendMessage("§cРядом с точкой тренировки нет места для бота. Сообщите администратору."); return; }
         if(!saveSnapshot(p)) { p.sendMessage("§cНе удалось сохранить ваши вещи. Вход отменён."); return; }
-        BossBar bar=Bukkit.createBossBar("§a/bots §f— настроить бота",BarColor.GREEN,BarStyle.SOLID); active.put(p.getUniqueId(),bar); bar.addPlayer(p);
+        BossBar bar=Bukkit.createBossBar("§a/bots §f— настроить бота",BarColor.GREEN,BarStyle.SOLID); active.put(p.getUniqueId(),bar); QuietSounds.add(p.getUniqueId()); bar.addPlayer(p);
+        hideFromOtherTrainees(p);
         p.getInventory().clear(); p.setItemOnCursor(null); p.getInventory().setItem(0,new ItemStack(Material.DIAMOND_SWORD)); p.getInventory().setHeldItemSlot(0);
         for(PotionEffect effect:p.getActivePotionEffects()) p.removePotionEffect(effect.getType());
-        p.setGameMode(GameMode.SURVIVAL); p.setFlying(false); p.setAllowFlight(false); p.setFoodLevel(20); p.setSaturation(20); p.setFireTicks(0);
+        p.setCollidable(false); p.setGameMode(GameMode.SURVIVAL); p.setFlying(false); p.setAllowFlight(false); p.setFoodLevel(20); p.setSaturation(20); p.setFireTicks(0);
         p.setHealth(p.getAttribute(Attribute.MAX_HEALTH).getValue());
         internal.add(p.getUniqueId()); boolean moved;
         try { moved=p.teleport(destination); } finally { internal.remove(p.getUniqueId()); }
@@ -129,6 +151,7 @@ public final class TrainingArena implements Listener {
             p.getInventory().setContents(contents); p.setItemOnCursor(y.getItemStack("cursor")); p.getInventory().setHeldItemSlot(y.getInt("held",0));
             for(PotionEffect effect:p.getActivePotionEffects()) p.removePotionEffect(effect.getType());
             for(Object effect:y.getList("effects",List.of())) if(effect instanceof PotionEffect pe) p.addPotionEffect(pe);
+            p.setCollidable(y.getBoolean("collidable",true));
             p.setGameMode(GameMode.valueOf(y.getString("gamemode","SURVIVAL"))); p.setAllowFlight(y.getBoolean("allowFlight")); if(p.getAllowFlight()) p.setFlying(y.getBoolean("flying"));
             p.setFoodLevel(y.getInt("food",20)); p.setSaturation((float)y.getDouble("saturation",5)); p.setExhaustion((float)y.getDouble("exhaustion"));
             p.setLevel(y.getInt("level")); p.setExp((float)y.getDouble("exp")); p.setTotalExperience(y.getInt("totalExp"));
@@ -139,7 +162,23 @@ public final class TrainingArena implements Listener {
         finally { restoring.remove(id); }
     }
     private void finish(UUID id) {
+        unhide(id); if(quietReady) QuietSounds.remove(id);
         invoke("remove",new Class<?>[]{UUID.class},id); BossBar bar=active.remove(id); if(bar!=null) bar.removeAll(); hints.remove(id); waitingRespawn.remove(id);
+    }
+    private void hideFromOtherTrainees(Player player) {
+        for(UUID id:active.keySet()) {
+            if(id.equals(player.getUniqueId())) continue;
+            Player other=Bukkit.getPlayer(id); if(other==null || !other.isOnline()) continue;
+            player.hidePlayer(plugin,other); other.hidePlayer(plugin,player);
+        }
+    }
+    private void unhide(UUID id) {
+        Player player=Bukkit.getPlayer(id); if(player==null) return;
+        for(UUID otherId:active.keySet()) {
+            if(id.equals(otherId)) continue;
+            Player other=Bukkit.getPlayer(otherId); if(other==null) continue;
+            player.showPlayer(plugin,other); other.showPlayer(plugin,player);
+        }
     }
     private void updateHint(Player p) {
         String msg=hints.contains(p.getUniqueId())?"§c/bots leave §f— выйти с арены":"§a/bots §f— настроить бота";
@@ -149,7 +188,7 @@ public final class TrainingArena implements Listener {
         for(UUID id:new ArrayList<>(active.keySet())) {
             Player p=Bukkit.getPlayer(id); if(p==null) continue;
             if(p.isDead()) { waitingRespawn.add(id); continue; }
-            if(!p.getWorld().getName().equals("duel") || !botExists(id) || !Bukkit.getPluginManager().isPluginEnabled("GreatCombat")) { restore(p); continue; }
+            if(!p.getWorld().getName().equals("duel") || !botExists(id) || !Bukkit.getPluginManager().isPluginEnabled("GreatCombat") || !Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) { restore(p); continue; }
             p.setFoodLevel(20); p.setSaturation(20); p.setFireTicks(0);
             double max=p.getAttribute(Attribute.MAX_HEALTH).getValue(); if(p.getHealth()<max) p.setHealth(max);
             updateHint(p);
