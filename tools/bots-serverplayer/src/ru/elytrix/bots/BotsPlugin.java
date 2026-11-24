@@ -44,9 +44,11 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this,this);
         registerGreatCombat();
         getServer().getScheduler().runTaskTimer(this,this::maintain,1,1);
+        TrainingArena.install(this);
     }
-    @Override public void onDisable() { for (UUID id : new ArrayList<>(bots.keySet())) remove(id); }
+    @Override public void onDisable() { TrainingArena.shutdown(); for (UUID id : new ArrayList<>(bots.keySet())) remove(id); }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (TrainingArena.command(sender,args)) return true;
         if (!(sender instanceof Player p)) { sender.sendMessage("§cКоманда только для игроков."); return true; }
         if (args.length>0) { p.sendMessage("§cИспользуй: /bots"); return true; }
         openMenu(p, 0); return true;
@@ -67,6 +69,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         openMenu(p,2);
     }
     private void openMenu(Player p, int page) {
+        page=TrainingArena.menuPage(p,page);
         Inventory menu = getServer().createInventory(new Menu(page),54,PINK+"§l"+(page==2?"Режим боя":page==1?"Настройка бота":"Тренировочный бот"));
         ItemStack black=item(Material.BLACK_STAINED_GLASS_PANE,"§r");
         ItemStack purple=item(Material.PURPLE_STAINED_GLASS_PANE,"§r");
