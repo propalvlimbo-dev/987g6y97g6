@@ -1,0 +1,1 @@
+package org.bukkit.event.entity;import org.bukkit.entity.ThrownPotion; public class LingeringPotionSplashEvent {public ThrownPotion potion;public boolean cancelled;public ThrownPotion getEntity(){return potion;}public void setCancelled(boolean b){cancelled=b;} }

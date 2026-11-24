@@ -1,0 +1,11 @@
+import java.util.*;import java.util.jar.*;import org.objectweb.asm.*;
+public class ApiScan {
+ record ClassInfo(String parent,String[] interfaces,Set<String> methods){}
+ static final Map<String,ClassInfo> classes=new HashMap<>();static final Map<String,Set<String>> missing=new TreeMap<>();
+ static boolean exists(String owner,String key,Set<String> seen){if(!seen.add(owner))return false;ClassInfo c=classes.get(owner);if(c==null)return false;if(c.methods.contains(key))return true;if(key.startsWith("<init>"))return false;if(c.parent!=null&&exists(c.parent,key,seen))return true;for(String i:c.interfaces)if(exists(i,key,seen))return true;return false;}
+ public static void main(String[]args)throws Exception{
+  try(JarFile api=new JarFile(args[0])){var it=api.entries();while(it.hasMoreElements()){var e=it.nextElement();if(!e.getName().endsWith(".class"))continue;ClassReader r=new ClassReader(api.getInputStream(e));Set<String> m=new HashSet<>();r.accept(new ClassVisitor(Opcodes.ASM9){public MethodVisitor visitMethod(int a,String n,String d,String s,String[]ex){m.add(n+d);return null;}},ClassReader.SKIP_CODE|ClassReader.SKIP_DEBUG|ClassReader.SKIP_FRAMES);classes.put(r.getClassName(),new ClassInfo(r.getSuperName(),r.getInterfaces(),m));}}
+  try(JarFile jar=new JarFile(args[1])){var it=jar.entries();while(it.hasMoreElements()){var e=it.nextElement();if(!e.getName().endsWith(".class")||!e.getName().startsWith("ru/elytrix/")&&!e.getName().startsWith("dev/epicduels/"))continue;new ClassReader(jar.getInputStream(e)).accept(new ClassVisitor(Opcodes.ASM9){String c;public void visit(int v,int a,String n,String s,String p,String[] i){c=n;}public MethodVisitor visitMethod(int a,String n,String d,String s,String[] ex){return new MethodVisitor(Opcodes.ASM9){public void visitMethodInsn(int op,String owner,String method,String desc,boolean itf){if(owner.startsWith("org/bukkit/") && classes.containsKey(owner) && !exists(owner,method+desc,new HashSet<>()))missing.computeIfAbsent(owner+"."+method+desc,k->new TreeSet<>()).add(c+"."+n);}};}},ClassReader.SKIP_DEBUG|ClassReader.SKIP_FRAMES);}}
+  missing.forEach((k,v)->System.out.println(k+" <- "+v));System.out.println("Missing method references: "+missing.size());
+ }
+}

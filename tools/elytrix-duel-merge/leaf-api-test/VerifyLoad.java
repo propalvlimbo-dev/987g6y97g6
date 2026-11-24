@@ -1,0 +1,1 @@
+public class VerifyLoad {public static void main(String[]args)throws Exception{for(String name:args){try{Class<?> c=Class.forName(name,false,VerifyLoad.class.getClassLoader());c.getDeclaredMethods();System.out.println("verified "+name);}catch(Throwable e){System.out.println("FAILED "+name+" "+e);throw e;}}}}

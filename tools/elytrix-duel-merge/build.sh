@@ -11,7 +11,7 @@ epic="$(realpath "$epic")"; bridge="$(realpath "$bridge")"; out="$(realpath -m "
 stage="$(mktemp -d)"; trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/classes" "$stage/helper" "$stage/transform" "$(dirname "$out")"
 python3 "$root/tools/duel-world-guard/patch.py" "$epic" "$stage/epic-guard.jar"
-"$JAVA" -jar "$ECJ" -21 -encoding UTF-8 -nowarn -cp "$ASM" -d "$stage/transform" "$root/tools/elytrix-duel-merge/transform/MergeTransform.java" "$root/tools/elytrix-duel-merge/transform/WorldCopyTransform.java" "$root/tools/elytrix-duel-merge/transform/ArenaBoundaryTransform.java"
+"$JAVA" -jar "$ECJ" -21 -encoding UTF-8 -nowarn -cp "$ASM" -d "$stage/transform" "$root/tools/elytrix-duel-merge/transform/MergeTransform.java" "$root/tools/elytrix-duel-merge/transform/WorldCopyTransform.java" "$root/tools/elytrix-duel-merge/transform/ArenaBoundaryTransform.java" "$root/tools/elytrix-duel-merge/transform/SharedWorldTransform.java"
 "$JAVA" -jar "$ECJ" -21 -encoding UTF-8 -nowarn -d "$stage/helper" $(find "$root/tools/elytrix-duel-merge/src" "$root/tools/elytrix-duel-merge/stubs" -name '*.java')
 python3 - "$stage" "$bridge" <<'PY'
 from zipfile import ZipFile
@@ -36,7 +36,7 @@ needle='  party:\n'; assert text.count(needle)==1
 text=text.replace(needle,'  duelx:\n    description: Elytrix duel menu actions\n    aliases: [dx]\n'+needle)
 p.write_text(text,encoding='utf8')
 helpers=stage/'helper/ru/elytrix/duelsbridge'
-for name in ('BridgeFiles', 'SafeWorldCopy', 'LegacyDataMigration', 'ArenaBoundary', 'TextFilter', 'MaceHeightDamage', 'SharedWorldSafety'):
+for name in ('BridgeFiles', 'SafeWorldCopy', 'LegacyDataMigration', 'ArenaBoundary', 'TextFilter', 'MaceHeightDamage', 'SharedWorldSafety', 'SharedBattleWorld'):
  matches=list(helpers.glob(name+'*.class'))
  assert matches, name
  for p in matches: (dest/'ru/elytrix/duelsbridge'/p.name).write_bytes(p.read_bytes())
@@ -45,6 +45,9 @@ cp "$root/finalbuild/duel-world-guard/EpicDuels-UPSTREAM-LICENSE.txt" "$stage/cl
 "$JAVA" -cp "$stage/transform:$ASM" MergeTransform "$stage/classes"
 "$JAVA" -cp "$stage/transform:$ASM" WorldCopyTransform "$stage/classes"
 "$JAVA" -cp "$stage/transform:$ASM" ArenaBoundaryTransform "$stage/classes"
+if [[ "${SHARED_WORLD_EXPERIMENTAL:-0}" == 1 ]]; then
+  "$JAVA" -cp "$stage/transform:$ASM" SharedWorldTransform "$stage/classes"
+fi
 python3 - "$stage/classes" "$out" <<'PY'
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED

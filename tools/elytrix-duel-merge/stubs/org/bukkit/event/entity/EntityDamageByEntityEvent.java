@@ -1,0 +1,1 @@
+package org.bukkit.event.entity;import org.bukkit.entity.Entity;public class EntityDamageByEntityEvent {public Entity damager,entity;public boolean cancelled;public Entity getDamager(){return damager;}public Entity getEntity(){return entity;}public void setCancelled(boolean b){cancelled=b;} }

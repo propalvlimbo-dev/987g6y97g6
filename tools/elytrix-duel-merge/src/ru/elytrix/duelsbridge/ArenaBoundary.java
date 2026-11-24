@@ -29,13 +29,13 @@ public final class ArenaBoundary {
  public static void move(ArenaRules rules,ElytrixDuelsBridge plugin,Map<UUID,ArenaRules.Bounds> cache,PlayerMoveEvent event) {
   if(event instanceof PlayerTeleportEvent) return;
   Player player=event.getPlayer(); if(player==null)return;
-  ArenaRules.Bounds b=cache.get(player.getUniqueId());
-  if(b==null)b=rules.resolve(player);
+  // A player may immediately enter a different battle; a cached boundary can belong to the old one.
+  ArenaRules.Bounds b=rules.resolve(player);
   Location to=event.getTo();
   if(b!=null && to!=null && to.getWorld()!=null && b.world.equals(to.getWorld().getName()) && mace(b))
    MaceHeightDamage.observe(player.getUniqueId(), b.world, to.getY(), System.nanoTime());
   else MaceHeightDamage.clear(player.getUniqueId());
-  if(!BridgeFiles.getConfig(plugin).getBoolean("protection.leave",true))return;
+  if(!SharedBattleWorld.enforceBoundary(player) && !BridgeFiles.getConfig(plugin).getBoolean("protection.leave",true))return;
   if(b==null || to==null || to.getWorld()==null || !b.world.equals(to.getWorld().getName()) || inside(to,b))return;
   Location bounded=clamp(to,b);
   event.setTo(bounded);
@@ -45,7 +45,7 @@ public final class ArenaBoundary {
   Player p=event.getPlayer();if(p==null)return;
   ArenaRules.Bounds b=rules.resolve(p);Location to=event.getTo();
   if(b==null || to==null || to.getWorld()==null)return;
-  boolean leave=BridgeFiles.getConfig(plugin).getBoolean("protection.leave",true);
+  boolean leave=SharedBattleWorld.enforceBoundary(p) || BridgeFiles.getConfig(plugin).getBoolean("protection.leave",true);
   boolean pearl=event.getCause()==PlayerTeleportEvent.TeleportCause.ENDER_PEARL;
   boolean pearlLimit=BridgeFiles.getConfig(plugin).getBoolean("protection.pearl-limit",true);
   if(!b.world.equals(to.getWorld().getName())) { if(leave) event.setCancelled(true);return; }

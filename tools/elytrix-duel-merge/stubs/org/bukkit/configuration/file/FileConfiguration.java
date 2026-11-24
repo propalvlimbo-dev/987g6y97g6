@@ -1,1 +1,1 @@
-package org.bukkit.configuration.file; import java.io.File; import java.io.IOException; public class FileConfiguration { public void save(File f) throws IOException {} public boolean getBoolean(String key,boolean d){return d;} }
+package org.bukkit.configuration.file; import java.io.File; import java.io.IOException; public class FileConfiguration { public void save(File f) throws IOException {} public double getDouble(String key,double value){return value;} public boolean getBoolean(String key,boolean d){return d;} }
