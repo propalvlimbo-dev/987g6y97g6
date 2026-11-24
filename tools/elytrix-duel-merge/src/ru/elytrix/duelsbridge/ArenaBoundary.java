@@ -19,9 +19,10 @@ public final class ArenaBoundary {
   return name.contains("булав") || name.contains("mace") ? Double.POSITIVE_INFINITY : original;
  }
  static boolean mace(ArenaRules.Bounds bounds) { return Double.isInfinite(bounds.maxY) && bounds.maxY>0; }
+ static double sideRadius(ArenaRules.Bounds b) { return mace(b) ? Math.min(b.radius,24.0) : b.radius; }
  static boolean inside(Location location, ArenaRules.Bounds b) {
   double dx=location.getX()-b.centerX,dz=location.getZ()-b.centerZ;
-  return dx*dx+dz*dz<=b.radius*b.radius && (mace(b) || location.getY()<=b.maxY && location.getY()>=b.minY);
+  return dx*dx+dz*dz<=sideRadius(b)*sideRadius(b) && (mace(b) || location.getY()<=b.maxY && location.getY()>=b.minY);
  }
  public static Location first(List<Location> points, Location fallback, int index) {
   return points!=null && points.size()>index && points.get(index)!=null ? points.get(index) : fallback;
@@ -56,8 +57,8 @@ public final class ArenaBoundary {
  }
  private static Location clamp(Location loc,ArenaRules.Bounds b) {
   Location out=loc.clone(); double dx=loc.getX()-b.centerX,dz=loc.getZ()-b.centerZ;
-  double distance=Math.hypot(dx,dz); double safe=Math.max(0,b.radius-0.01);
-  if(distance>b.radius && distance>0){out.setX(b.centerX+dx*safe/distance);out.setZ(b.centerZ+dz*safe/distance);}
+  double distance=Math.hypot(dx,dz); double radius=sideRadius(b), safe=Math.max(0,radius-0.01);
+  if(distance>radius && distance>0){out.setX(b.centerX+dx*safe/distance);out.setZ(b.centerZ+dz*safe/distance);}
   if(!mace(b))out.setY(Math.max(b.minY,Math.min(b.maxY-0.01,loc.getY())));return out;
  }
  private static void limitVelocity(Player player,ArenaRules.Bounds b,Location attempted) {
@@ -65,7 +66,7 @@ public final class ArenaBoundary {
   if(!mace(b) && attempted.getY()>b.maxY && v.getY()>0){v.setY(0);changed=true;}
   if(!mace(b) && attempted.getY()<b.minY && v.getY()<0){v.setY(0);changed=true;}
   double dx=attempted.getX()-b.centerX,dz=attempted.getZ()-b.centerZ,dist=Math.hypot(dx,dz);
-  if(dist>b.radius && dist>0){double nx=dx/dist,nz=dz/dist,dot=v.getX()*nx+v.getZ()*nz;if(dot>0){v.setX(v.getX()-dot*nx);v.setZ(v.getZ()-dot*nz);changed=true;}}
+  if(dist>sideRadius(b) && dist>0){double nx=dx/dist,nz=dz/dist,dot=v.getX()*nx+v.getZ()*nz;if(dot>0){v.setX(v.getX()-dot*nx);v.setZ(v.getZ()-dot*nz);changed=true;}}
   if(changed)player.setVelocity(v);
  }
 }

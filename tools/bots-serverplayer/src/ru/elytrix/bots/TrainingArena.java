@@ -72,7 +72,7 @@ public final class TrainingArena implements Listener {
         }
         ItemStack item=new ItemStack(Material.LIME_CONCRETE); ItemMeta meta=item.getItemMeta();
         meta.setDisplayName("§7« §aВОЙТИ НА ТРЕНИРОВКУ §7»");
-        meta.setLore(List.of(PINK+"┃ ",PINK+"┃ §fЛичный тренировочный бот",PINK+"┃ §fАлмазный меч и общая арена",PINK+"┃ §7Во время тренировки звуки отключены",PINK+"┃ ","§7● §fНажмите для входа"));
+        meta.setLore(List.of(PINK+"┃ ",PINK+"┃ §fЛичный тренировочный бот",PINK+"┃ §fАлмазный меч и общая арена",PINK+"┃ §7Слышны только свои попадания",PINK+"┃ ","§7● §fНажмите для входа"));
         item.setItemMeta(meta); menu.setItem(22,item); p.openInventory(menu);
         p.playSound(p.getLocation(),Sound.BLOCK_AMETHYST_BLOCK_CHIME,0.35f,1.4f);
     }
@@ -218,6 +218,15 @@ public final class TrainingArena implements Listener {
             if(p.getUniqueId().toString().equals(owner)) { if(e.getFinalDamage()>=p.getHealth()) e.setCancelled(true); return; }
         }
         e.setCancelled(true);
+    }
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void privateHitSound(EntityDamageByEntityEvent e) {
+        if(!quietReady || !(e.getDamager() instanceof Player attacker) || !(e.getEntity() instanceof Player victim)) return;
+        Player listener=null;
+        String targetOwner=victim.getPersistentDataContainer().get(new NamespacedKey(plugin,"owner"),org.bukkit.persistence.PersistentDataType.STRING);
+        String attackerOwner=attacker.getPersistentDataContainer().get(new NamespacedKey(plugin,"owner"),org.bukkit.persistence.PersistentDataType.STRING);
+        if(active.containsKey(attacker.getUniqueId()) && attacker.getUniqueId().toString().equals(targetOwner)) listener=attacker;
+        else if(active.containsKey(victim.getUniqueId()) && victim.getUniqueId().toString().equals(attackerOwner)) listener=victim;
+        if(listener!=null) listener.playSound(listener.getLocation(),Sound.ENTITY_PLAYER_ATTACK_STRONG,QuietSounds.CUE_VOLUME,QuietSounds.CUE_PITCH);
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void attack(EntityDamageByEntityEvent e) {
         if(e.getDamager() instanceof Player p && training(p)) {

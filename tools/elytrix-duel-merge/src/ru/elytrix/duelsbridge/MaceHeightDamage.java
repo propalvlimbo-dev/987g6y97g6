@@ -39,7 +39,7 @@ public final class MaceHeightDamage {
   if(now-state.lastAction<INTERVAL)return 0;
   state.lastAction=now;
   if(state.hits<Integer.MAX_VALUE)state.hits++;
-  return state.hits;
+  return state.hits > Integer.MAX_VALUE/2 ? Integer.MAX_VALUE : state.hits * 2;
  }
  static void tick(ArenaRules rules, Iterable<? extends Player> players, long now) {
   Set<UUID> retained=new HashSet<>();
@@ -48,7 +48,7 @@ public final class MaceHeightDamage {
    if(player.isDead() || b==null || loc==null || loc.getWorld()==null || !b.world.equals(loc.getWorld().getName())) {clear(id);continue;}
    retained.add(id);
    int action=step(id,b.world,loc.getY(),now);
-   if(action<0)player.sendMessage("§dДуэли §8» §eТы слишком высоко! Спустись до Y=104, иначе через 5 секунд начнётся нарастающий урон.");
+   if(action<0)player.sendTitle("§cОПАСНО!", "§fСпустись ниже!", 0, 60, 10);
    else if(action>0)player.damage(action);
   }
   states.keySet().retainAll(retained);

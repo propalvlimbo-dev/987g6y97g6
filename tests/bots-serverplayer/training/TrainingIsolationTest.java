@@ -40,6 +40,8 @@ public final class TrainingIsolationTest {
   PacketAdapter listener=(PacketAdapter)allocate(Class.forName("ru.elytrix.bots.QuietSounds$1"));
   PacketEvent ea=new PacketEvent(new Object()); put(PacketEvent.class,ea,"playerReference",new WeakReference<>(pa));
   PacketEvent ec=new PacketEvent(new Object()); put(PacketEvent.class,ec,"playerReference",new WeakReference<>(pc));
+  check(QuietSounds.isCue(QuietSounds.CUE_VOLUME,QuietSounds.CUE_PITCH),"private cue marker accepted");
+  check(!QuietSounds.isCue(1f,QuietSounds.CUE_PITCH) && !QuietSounds.isCue(null,null),"other packets do not pass cue filter");
   QuietSounds.add(a); listener.onPacketSending(ea); listener.onPacketSending(ec);
   check(ea.isCancelled() && !ec.isCancelled(),"only training listener sound muted");
   QuietSounds.remove(a); PacketEvent end=new PacketEvent(new Object()); put(PacketEvent.class,end,"playerReference",new WeakReference<>(pa)); listener.onPacketSending(end);

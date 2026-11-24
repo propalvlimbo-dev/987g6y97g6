@@ -2,7 +2,7 @@ package ru.elytrix.duelsbridge;
 import java.util.*;import org.bukkit.*;import org.bukkit.entity.Player;import org.bukkit.event.player.*;import org.bukkit.util.Vector;
 public class MaceHeightTest {
  public static class Kit {final String name;Kit(String n){name=n;}public String getKitName(){return name;}}
- static class P implements Player {UUID id=UUID.randomUUID();Location loc;Vector velocity=new Vector(0,3,0);int tp,damage,warnings; double lastDamage;P(Location l){loc=l;}public UUID getUniqueId(){return id;}public Location getLocation(){return loc;}public boolean teleport(Location l){tp++;loc=l;return true;}public Vector getVelocity(){return velocity;}public void setVelocity(Vector v){velocity=v;}public boolean isDead(){return false;}public void damage(double amount){damage++;lastDamage=amount;} public void sendMessage(String msg){warnings++;}}
+ static class P implements Player {UUID id=UUID.randomUUID();Location loc;Vector velocity=new Vector(0,3,0);int tp,damage,warnings; double lastDamage;P(Location l){loc=l;}public UUID getUniqueId(){return id;}public Location getLocation(){return loc;}public boolean teleport(Location l){tp++;loc=l;return true;}public Vector getVelocity(){return velocity;}public void setVelocity(Vector v){velocity=v;}public boolean isDead(){return false;}public void damage(double amount){damage++;lastDamage=amount;} public void sendTitle(String title,String subtitle,int fi,int stay,int fo){check(title.contains("ОПАСНО") && subtitle.contains("Спустись"),"warning title");warnings++;}}
  static void check(boolean b,String m){if(!b)throw new AssertionError(m);}
  public static void main(String[] a)throws Exception{
   check(Double.isInfinite(ArenaBoundary.effectiveHeight(15,new Kit("Булава"))),"mace unlimited");
@@ -23,9 +23,9 @@ public class MaceHeightTest {
   check(MaceHeightDamage.step(id,"w",105,s+4_999_999_999L)==0,"no early warning");
   check(MaceHeightDamage.step(id,"w",105,s+5_000_000_000L)==-1,"warning at five seconds");
   check(MaceHeightDamage.step(id,"w",105,s+9_999_999_999L)==0,"warning grace");
-  check(MaceHeightDamage.step(id,"w",105,s+10_000_000_000L)==1,"first damage");
-  check(MaceHeightDamage.step(id,"w",105,s+15_000_000_000L)==2,"second damage");
-  check(MaceHeightDamage.step(id,"w",105,s+20_000_000_000L)==3,"third damage");
+  check(MaceHeightDamage.step(id,"w",105,s+10_000_000_000L)==2,"first damage");
+  check(MaceHeightDamage.step(id,"w",105,s+15_000_000_000L)==4,"second damage");
+  check(MaceHeightDamage.step(id,"w",105,s+20_000_000_000L)==6,"third damage");
   check(MaceHeightDamage.step(id,"w",104,s+21_000_000_000L)==0,"ground resets");
   check(MaceHeightDamage.step(id,"w",105,s+21_100_000_000L)==0,"new grace after reset");
   check(MaceHeightDamage.step(id,"new-world",105,s+40_000_000_000L)==0,"new fight resets");
@@ -33,16 +33,16 @@ public class MaceHeightTest {
   MaceHeightDamage.tick(r,List.of(p),s);MaceHeightDamage.tick(r,List.of(p),s+4_999_999_999L);
   check(p.damage==0 && p.warnings==0,"no effect before grace");
   MaceHeightDamage.tick(r,List.of(p),s+5_000_000_000L);check(p.damage==0 && p.warnings==1,"warning without damage");
-  MaceHeightDamage.tick(r,List.of(p),s+10_000_000_000L);check(p.damage==1 && p.lastDamage==1,"first actual damage");
-  MaceHeightDamage.tick(r,List.of(p),s+15_000_000_000L);check(p.damage==2 && p.lastDamage==2,"increasing actual damage");
+  MaceHeightDamage.tick(r,List.of(p),s+10_000_000_000L);check(p.damage==1 && p.lastDamage==2,"first actual damage");
+  MaceHeightDamage.tick(r,List.of(p),s+15_000_000_000L);check(p.damage==2 && p.lastDamage==4,"increasing actual damage");
   p.loc=new Location(w,0,104,0);MaceHeightDamage.tick(r,List.of(p),s+16_000_000_000L);
   p.loc=new Location(w,0,105,0);MaceHeightDamage.tick(r,List.of(p),s+17_000_000_000L);
   MaceHeightDamage.tick(r,List.of(p),s+22_000_000_000L);check(p.warnings==2 && p.damage==2,"new warning after descent");
   b.maxY=107;MaceHeightDamage.clear(p.id);
   MaceHeightDamage.tick(r,List.of(p),s+30_000_000_000L);
   MaceHeightDamage.tick(r,List.of(p),s+35_000_000_000L);check(p.warnings==3 && p.damage==2,"other kit gets warning");
-  MaceHeightDamage.tick(r,List.of(p),s+40_000_000_000L);check(p.damage==3 && p.lastDamage==1,"other kit gets first damage");
-  MaceHeightDamage.tick(r,List.of(p),s+45_000_000_000L);check(p.damage==4 && p.lastDamage==2,"other kit gets increasing damage");
+  MaceHeightDamage.tick(r,List.of(p),s+40_000_000_000L);check(p.damage==3 && p.lastDamage==2,"other kit gets first damage");
+  MaceHeightDamage.tick(r,List.of(p),s+45_000_000_000L);check(p.damage==4 && p.lastDamage==4,"other kit gets increasing damage");
   p.velocity=new Vector(0,3,0);move.to=new Location(w,0,200,0);ArenaBoundary.move(r,plugin,Map.of(),move);
   check(move.to.getY()<107 && p.velocity.getY()==0,"other kit retains upper barrier");
   r.bounds=null;MaceHeightDamage.tick(r,List.of(p),s+46_000_000_000L);r.bounds=b;
@@ -50,6 +50,10 @@ public class MaceHeightTest {
   MaceHeightDamage.clear(p.id);MaceHeightDamage.step(p.id,w.getName(),105,s);
   PlayerTeleportEvent down=new PlayerTeleportEvent();down.player=p;down.to=new Location(w,0,104,0);MaceHeightDamage.onMovement(r,down);
   check(MaceHeightDamage.step(p.id,w.getName(),105,s+20_000_000_000L)==0,"successful downward teleport resets timer");
+  b.radius=37;b.maxY=Double.POSITIVE_INFINITY;p.velocity=new Vector(4,2,0);move.to=new Location(w,30,150,0);ArenaBoundary.move(r,plugin,Map.of(),move);
+  check(move.to.getX()<24 && move.to.getX()>23.9 && move.to.getY()==150 && p.velocity.getX()==0 && p.velocity.getY()==2,"mace 24-block radius clamps wind charge");
+  pearl.to=new Location(w,25,150,0);ArenaBoundary.teleport(r,plugin,pearl);check(pearl.cancelled,"mace pearl beyond 24 blocks cancelled");
+  b.maxY=115;move.to=new Location(w,30,105,0);ArenaBoundary.move(r,plugin,Map.of(),move);check(move.to.getX()==30,"other kits retain original radius");
   System.out.println("Mace height and damage tests passed");
  }
 }
