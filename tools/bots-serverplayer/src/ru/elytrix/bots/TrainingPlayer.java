@@ -9,7 +9,9 @@ import net.minecraft.server.level.ServerPlayer;
 final class TrainingPlayer extends ServerPlayer {
     void jumpForCombat() { jumpFromGround(); }
     long nextAttackTick;
-    int attacksMade;
+    long nextStrafeTick, sprintResumeTick;
+    int strafeDirection = 1;
+    boolean criticalPlanned = java.util.concurrent.ThreadLocalRandom.current().nextDouble() < 0.32;
     private net.minecraft.world.phys.Vec3 pendingVelocity;
     void acceptKnockback(net.minecraft.world.phys.Vec3 velocity) { pendingVelocity = velocity; }
     TrainingPlayer(MinecraftServer server, ServerLevel world, GameProfile profile) {
