@@ -9,9 +9,11 @@ public final class MergeTransform {
  static final String FILES="ru/elytrix/duelsbridge/BridgeFiles";
  public static void main(String[] args) throws Exception {
   Path root=Path.of(args[0]); int[] changed={0,0,0,0,0};
-  try(var paths=Files.walk(root.resolve("ru/elytrix/duelsbridge"))) {
+  try(var paths=Files.walk(root)) {
    for(Path p:paths.filter(x->x.toString().endsWith(".class")).toList()) {
-    if(p.getFileName().toString().startsWith("BridgeFiles")) continue;
+    String rel=root.relativize(p).toString().replace('\\','/');
+    if(!rel.startsWith("ru/elytrix/duelsbridge/") && !rel.startsWith("dev/epicduels/")) continue;
+    if(p.getFileName().toString().startsWith("BridgeFiles") || p.getFileName().toString().startsWith("LegacyDataMigration") || p.getFileName().toString().startsWith("SafeWorldCopy")) continue;
     ClassReader r=new ClassReader(Files.readAllBytes(p));
     ClassWriter w=new ClassWriter(r,ClassWriter.COMPUTE_MAXS);
     r.accept(new ClassVisitor(Opcodes.ASM9,w) {
@@ -27,6 +29,7 @@ public final class MergeTransform {
        @Override public void visitCode() {
         super.visitCode();
         if(current.equals(BRIDGE) && name.equals("onEnable") && desc.equals("()V")) {
+          super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESTATIC,"ru/elytrix/duelsbridge/LegacyDataMigration","migrate","(L"+BRIDGE+";)V",false);
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESPECIAL,EPIC,"onEnable","()V",false);changed[1]++;
         }
        }
@@ -35,6 +38,14 @@ public final class MergeTransform {
           super.visitVarInsn(Opcodes.ALOAD,0); super.visitMethodInsn(Opcodes.INVOKESPECIAL,EPIC,"onDisable","()V",false);changed[2]++;
         }
         super.visitInsn(opcode);
+       }
+       @Override public void visitLdcInsn(Object value) {
+        if(value instanceof String s && s.contains("EpicDuels")) value=s.replace("EpicDuels","ElytrixDuel");
+        super.visitLdcInsn(value);
+       }
+       @Override public void visitInvokeDynamicInsn(String n,String d,Handle bootstrap,Object... values) {
+        for(int i=0;i<values.length;i++) if(values[i] instanceof String s && s.contains("EpicDuels")) values[i]=s.replace("EpicDuels","ElytrixDuel");
+        super.visitInvokeDynamicInsn(n,d,bootstrap,values);
        }
        @Override public void visitMethodInsn(int opcode,String owner,String method,String descriptor,boolean itf) {
         if(current.equals(BRIDGE) && name.equals("<init>") && opcode==Opcodes.INVOKESPECIAL && owner.equals("org/bukkit/plugin/java/JavaPlugin") && method.equals("<init>")) { owner=EPIC;changed[3]++; }

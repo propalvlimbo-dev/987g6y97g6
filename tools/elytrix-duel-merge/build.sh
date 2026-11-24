@@ -11,7 +11,7 @@ epic="$(realpath "$epic")"; bridge="$(realpath "$bridge")"; out="$(realpath -m "
 stage="$(mktemp -d)"; trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/classes" "$stage/helper" "$stage/transform" "$(dirname "$out")"
 python3 "$root/tools/duel-world-guard/patch.py" "$epic" "$stage/epic-guard.jar"
-"$JAVA" -jar "$ECJ" -21 -encoding UTF-8 -nowarn -cp "$ASM" -d "$stage/transform" "$root/tools/elytrix-duel-merge/transform/MergeTransform.java"
+"$JAVA" -jar "$ECJ" -21 -encoding UTF-8 -nowarn -cp "$ASM" -d "$stage/transform" "$root/tools/elytrix-duel-merge/transform/MergeTransform.java" "$root/tools/elytrix-duel-merge/transform/WorldCopyTransform.java"
 "$JAVA" -jar "$ECJ" -21 -encoding UTF-8 -nowarn -d "$stage/helper" $(find "$root/tools/elytrix-duel-merge/src" "$root/tools/elytrix-duel-merge/stubs" -name '*.java')
 python3 - "$stage" "$bridge" <<'PY'
 from zipfile import ZipFile
@@ -29,14 +29,21 @@ with ZipFile(bridge) as z:
  (dest/'bridge-config.yml').write_bytes(z.read('config.yml'))
 p=dest/'plugin.yml'; text=p.read_text(encoding='utf8')
 assert 'name: EpicDuels\n' in text and 'main: dev.epicduels.EpicDuels\n' in text
+text=text.replace('name: EpicDuels\n','name: ElytrixDuel\n')
+text=text.replace('  EpicDuels:\n','  ElytrixDuel:\n')
 text=text.replace('main: dev.epicduels.EpicDuels\n','main: ru.elytrix.duelsbridge.ElytrixDuelsBridge\n')
 needle='  party:\n'; assert text.count(needle)==1
 text=text.replace(needle,'  duelx:\n    description: Elytrix duel menu actions\n    aliases: [dx]\n'+needle)
 p.write_text(text,encoding='utf8')
-(dest/'ru/elytrix/duelsbridge/BridgeFiles.class').write_bytes((stage/'helper/ru/elytrix/duelsbridge/BridgeFiles.class').read_bytes())
+helpers=stage/'helper/ru/elytrix/duelsbridge'
+for name in ('BridgeFiles', 'SafeWorldCopy', 'LegacyDataMigration'):
+ matches=list(helpers.glob(name+'*.class'))
+ assert matches, name
+ for p in matches: (dest/'ru/elytrix/duelsbridge'/p.name).write_bytes(p.read_bytes())
 PY
 cp "$root/finalbuild/duel-world-guard/EpicDuels-UPSTREAM-LICENSE.txt" "$stage/classes/META-INF/LICENSE-EpicDuels.txt"
 "$JAVA" -cp "$stage/transform:$ASM" MergeTransform "$stage/classes"
+"$JAVA" -cp "$stage/transform:$ASM" WorldCopyTransform "$stage/classes"
 python3 - "$stage/classes" "$out" <<'PY'
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
