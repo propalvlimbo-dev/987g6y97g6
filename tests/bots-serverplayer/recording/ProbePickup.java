@@ -1,0 +1,10 @@
+package test;
+import org.bukkit.*;import org.bukkit.entity.*;import org.bukkit.event.*;import org.bukkit.event.player.PlayerJoinEvent;import org.bukkit.inventory.ItemStack;import org.bukkit.plugin.java.JavaPlugin;import java.lang.reflect.*;import java.util.*;import net.minecraft.server.level.ServerPlayer;
+public class ProbePickup extends JavaPlugin implements Listener {
+ public void onEnable(){getServer().getPluginManager().registerEvents(this,this);}
+ @EventHandler public void join(PlayerJoinEvent e){Player p=e.getPlayer();if(!p.getName().equals("TestOwner"))return;getServer().getScheduler().runTaskLater(this,()->{try{
+ World w=p.getWorld();for(int x=-6;x<=6;x++)for(int z=-6;z<=6;z++){w.getBlockAt(x,99,z).setType(Material.STONE);for(int y=100;y<104;y++)w.getBlockAt(x,y,z).setType(Material.AIR);}p.teleport(new Location(w,.5,100,.5,0,0));
+ JavaPlugin bp=(JavaPlugin)getServer().getPluginManager().getPlugin("ElytrixBotsTrain");String path="players."+p.getUniqueId()+".";bp.getConfig().set(path+"mode","custom");bp.getConfig().set(path+"follow",false);bp.getConfig().set(path+"attack",false);Method spawn=bp.getClass().getDeclaredMethod("spawn",Player.class);spawn.setAccessible(true);spawn.invoke(bp,p);Field f=bp.getClass().getDeclaredField("bots");f.setAccessible(true);ServerPlayer bot=(ServerPlayer)((Map<?,?>)f.get(bp)).get(p.getUniqueId());if(bot==null)throw new Exception("no bot");Player fake=bot.getBukkitEntity();Location point=fake.getLocation();p.teleport(new Location(w,4.5,100,4.5));Item item=w.dropItem(point,new ItemStack(Material.DIAMOND,3));item.setPickupDelay(0);ExperienceOrb orb=w.spawn(point,ExperienceOrb.class);orb.setExperience(5);getLogger().info("PICKUP START bot="+point+" item="+item.isValid()+" exp="+orb.isValid());
+ getServer().getScheduler().runTaskLater(this,()->{getLogger().info("PICKUP RESULT item="+item.isValid()+" orb="+orb.isValid()+" inventory="+fake.getInventory().contains(Material.DIAMOND));p.damage(1,fake);},60L);
+ }catch(Throwable t){getLogger().log(java.util.logging.Level.SEVERE,"PROBE FAILED",t);}},30L);}
+}

@@ -29,6 +29,8 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     private final Map<UUID,UUID> owners = new HashMap<>();
     private NamespacedKey marker, ownerKey;
     private boolean combatReady;
+    private DatasetRecorder dataset;
+    boolean isBot(Player player) { return owners.containsKey(player.getUniqueId()); }
     private static final String PINK = "§x§F§8§B§E§F§B";
     private static final class Menu implements InventoryHolder {
         final int page;
@@ -43,11 +45,20 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         marker = new NamespacedKey(this,"training_bot"); ownerKey = new NamespacedKey(this,"owner");
         getServer().getPluginManager().registerEvents(this,this);
         registerGreatCombat();
-        getServer().getScheduler().runTaskTimer(this,this::maintain,1,1);
+        dataset = new DatasetRecorder(this);
+        getServer().getPluginManager().registerEvents(dataset,this);
+        getServer().getScheduler().runTaskTimer(this,()->{ maintain(); dataset.tick(); },1,1);
     }
-    @Override public void onDisable() { for (UUID id : new ArrayList<>(bots.keySet())) remove(id); }
+    @Override public void onDisable() { if (dataset != null) dataset.close(); for (UUID id : new ArrayList<>(bots.keySet())) remove(id); }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player p)) { sender.sendMessage("§cКоманда только для игроков."); return true; }
+        if(args.length>0 && args[0].equalsIgnoreCase("dataset")) {
+            if (!p.hasPermission("elytrixbots.dataset")) { p.sendMessage("§cНет прав на запись датасета."); return true; }
+            if(args.length!=2) p.sendMessage("§cИспользуй: /bots dataset <pro|noob|crit|combo|stop>");
+            else if(args[1].equalsIgnoreCase("stop")) dataset.stop(p.getUniqueId(),true);
+            else dataset.start(p,args[1]);
+            return true;
+        }
         openMenu(p, 0); return true;
     }
     private String settingPath(Player player, String key) { return "players." + player.getUniqueId() + "." + key; }
@@ -151,7 +162,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
             Player fake=bot.getBukkitEntity();
             fake.getPersistentDataContainer().set(marker,PersistentDataType.BYTE,(byte)1);
             fake.getPersistentDataContainer().set(ownerKey,PersistentDataType.STRING,owner.getUniqueId().toString());
-            fake.setVisibleByDefault(false); fake.setPersistent(false); fake.setCollidable(false);
+            fake.setVisibleByDefault(false); fake.setPersistent(false); fake.setCollidable(false); fake.setCanPickupItems(false);
             AttributeInstance health=fake.getAttribute(Attribute.MAX_HEALTH); if (health!=null) health.setBaseValue(2048);
             fake.setHealth(fake.getMaxHealth());
             bots.put(owner.getUniqueId(),bot); owners.put(uuid,owner.getUniqueId());
@@ -215,9 +226,11 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         boolean valid=!owner.isDead() && owner.getGameMode()!=GameMode.SPECTATOR;
         long now=bot.level().getServer().getTickCount();
         boolean criticalMode=mode.equals("crit") || (mode.equals("pro") && bot.attacksMade%3==0);
-        boolean inRange=distance<=9.0 && fake.hasLineOfSight(owner);
-        boolean prepareCritical=attack && valid && criticalMode && inRange && now>=bot.nextAttackTick;
-        boolean chasing=follow && valid && distance>5.76 && distance<4096;
+        double reach=2.65;
+        boolean inRange=distance<=reach*reach && fake.hasLineOfSight(owner);
+        boolean prepareCritical=attack && valid && criticalMode && inRange && (mode.equals("crit") || now>=bot.nextAttackTick);
+        double preferredDistance = mode.equals("crit") ? 1.8 : mode.equals("pro") ? 2.0 : mode.equals("combo") ? 1.75 : 2.4;
+        boolean chasing=follow && valid && distance>preferredDistance*preferredDistance && distance<4096;
         if (look && valid) face(bot,owner,true); else if (chasing) face(bot,owner,false);
         bot.zza=chasing?(mode.equals("noob")?0.65f:1.0f):0.0f;
         bot.xxa=mode.equals("pro") && valid && distance<16 && !prepareCritical ? ((now/24)%2==0?0.55f:-0.55f):0;
@@ -227,7 +240,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         if (!attack || !valid || !inRange || now<bot.nextAttackTick || bot.getAttackStrengthScale(0.5f)<0.9f) return;
         if (criticalMode && !(bot.fallDistance>0 && !bot.onGround() && !bot.isSprinting() && !bot.onClimbable() && !bot.isInWater() && !bot.isMobilityRestricted() && !bot.isPassenger())) return;
         face(bot,owner,true);
-        bot.nextAttackTick=now+(mode.equals("noob")?26:mode.equals("combo")?12:mode.equals("pro")?11:20);
+        bot.nextAttackTick=now+(mode.equals("noob")?26:mode.equals("combo")?12:mode.equals("pro")?11:mode.equals("crit")?10:20);
         bot.attacksMade++;
         if (mode.equals("noob") && ThreadLocalRandom.current().nextDouble()<0.35) {
             bot.swing(InteractionHand.MAIN_HAND); return;
@@ -265,6 +278,9 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
             getLogger().log(java.util.logging.Level.SEVERE, "Не удалось подключить API GreatCombat; создание ботов отключено. Проверьте версию GreatCombat.", failure);
         }
     }
+    @EventHandler(priority=EventPriority.HIGHEST) public void pickup(EntityPickupItemEvent e) { if (owners.containsKey(e.getEntity().getUniqueId())) e.setCancelled(true); }
+    @EventHandler(priority=EventPriority.HIGHEST) public void pickupAttempt(PlayerAttemptPickupItemEvent e) { if (owners.containsKey(e.getPlayer().getUniqueId())) e.setCancelled(true); }
+    @EventHandler(priority=EventPriority.HIGHEST) public void exp(com.destroystokyo.paper.event.player.PlayerPickupExperienceEvent e) { if (owners.containsKey(e.getPlayer().getUniqueId())) e.setCancelled(true); }
     @EventHandler public void interact(PlayerInteractEntityEvent e) { if (owners.containsKey(e.getRightClicked().getUniqueId())) e.setCancelled(true); }
     @EventHandler public void quit(PlayerQuitEvent e) { remove(e.getPlayer().getUniqueId()); }
     @EventHandler public void world(PlayerChangedWorldEvent e) { remove(e.getPlayer().getUniqueId()); }
