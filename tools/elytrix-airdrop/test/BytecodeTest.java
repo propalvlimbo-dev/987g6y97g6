@@ -19,6 +19,10 @@ public class BytecodeTest implements Opcodes {
    ClassNode main=read(jar,BASE+"Main");boolean chest=false, sky=false;
    for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.owner.equals(BASE+"patch/PeacefulChest")&&a.name.equals("install"))chest=true;if(a.owner.equals(BASE+"patch/SkyMechanics")&&a.name.equals("install"))sky=true;}
    if(!chest||!sky)throw new AssertionError("mechanics installation missing");
+   ClassNode safeChest=read(jar,BASE+"patch/PeacefulChest");
+   for(MethodNode m:safeChest.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("openInventory"))throw new AssertionError("unsafe reopen remains");}
+   ClassNode skyPatch=read(jar,BASE+"patch/SkyMechanics");
+   for(MethodNode m:skyPatch.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("setY") || a.name.equals("runTaskLater"))throw new AssertionError("sky launch remains");}
    ClassNode manager=read(jar,BASE+"managers/AirdropManager");boolean adjust=false;
    for(MethodNode m:manager.methods)if(m.name.equals("start"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/EventPlacement") && ((MethodInsnNode)i).name.equals("adjust"))adjust=true;
    if(!adjust)throw new AssertionError("placement hook missing");
@@ -26,7 +30,7 @@ public class BytecodeTest implements Opcodes {
    for(MethodNode m:peace.methods)if(m.name.equals("openLoot"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;if(call.name.equals("preparePeaceful"))generate=true;if(call.name.equals("track"))tracked=true;}
    if(!generate||!tracked)throw new AssertionError("peaceful hooks missing");
   }
-  System.out.println("Bytecode: placement, masked inventories and draw-without-replacement and sky teleport hooks OK");
+  System.out.println("Bytecode: placement, masked inventories and draw-without-replacement sky teleport hooks, no chest reopen or vertical launch OK");
  }
  static ClassNode read(ZipFile jar,String name)throws Exception {ClassNode node=new ClassNode();try(InputStream in=jar.getInputStream(jar.getEntry(name+".class"))){new ClassReader(in).accept(node,0);}return node;}
 }
