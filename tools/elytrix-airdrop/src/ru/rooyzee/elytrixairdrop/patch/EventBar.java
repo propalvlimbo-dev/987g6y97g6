@@ -47,7 +47,7 @@ public final class EventBar implements Listener {
     long ms=(long)field(a,"unlockTime")-System.currentTimeMillis();long s=Math.max(0,(ms+999)/1000);
     return "&fОткрытие через &#F8BEFB"+(s/60)+"м "+(s%60)+"с";
    }
-   if(type.equals("fire")){Method m=a.getClass().getDeclaredMethod("statusLine");m.setAccessible(true);return (String)m.invoke(a);}
+   if(type.equals("fire")){Method m=a.getClass().getDeclaredMethod("statusLine");m.setAccessible(true);return ((String)m.invoke(a)).replace("●", "").trim();}
    if(type.equals("sky")){
     Map<?,?> boxes=(Map<?,?>)field(a,"shulkers");boolean active=false,open=false;
     for(Object b:boxes.values()){if((boolean)field(b,"activated"))active=true;if((boolean)field(b,"unlocked") && !(boolean)field(b,"looted"))open=true;}

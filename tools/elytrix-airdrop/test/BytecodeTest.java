@@ -13,6 +13,12 @@ public class BytecodeTest implements Opcodes {
     for(MethodNode m:c.methods)if(m.name.equals(method))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;if(call.owner.equals("java/util/List")&&call.name.equals("remove")&&call.desc.equals("(I)Ljava/lang/Object;"))remove++;if(call.name.equals("perContainer"))count++;if(call.name.equals("getOnlinePlayers"))online++;if(call.name.equals("track"))masks++;}
     if(remove!=1||count!=1||online!=0||masks!=1)throw new AssertionError(type+" "+remove+" "+count+" "+online+" "+masks);
    }
+   ClassNode protection=read(jar,BASE+"listeners/ProtectionListener");int bypass=0;
+   for(MethodNode m:protection.methods)if(m.name.equals("onTeleport")||m.name.equals("onPearlThrow"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/SkyMechanics") && ((MethodInsnNode)i).name.equals("skyActive"))bypass++;
+   if(bypass!=2)throw new AssertionError("sky teleport hooks "+bypass);
+   ClassNode main=read(jar,BASE+"Main");boolean chest=false, sky=false;
+   for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.owner.equals(BASE+"patch/PeacefulChest")&&a.name.equals("install"))chest=true;if(a.owner.equals(BASE+"patch/SkyMechanics")&&a.name.equals("install"))sky=true;}
+   if(!chest||!sky)throw new AssertionError("mechanics installation missing");
    ClassNode manager=read(jar,BASE+"managers/AirdropManager");boolean adjust=false;
    for(MethodNode m:manager.methods)if(m.name.equals("start"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/EventPlacement") && ((MethodInsnNode)i).name.equals("adjust"))adjust=true;
    if(!adjust)throw new AssertionError("placement hook missing");
@@ -20,7 +26,7 @@ public class BytecodeTest implements Opcodes {
    for(MethodNode m:peace.methods)if(m.name.equals("openLoot"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;if(call.name.equals("preparePeaceful"))generate=true;if(call.name.equals("track"))tracked=true;}
    if(!generate||!tracked)throw new AssertionError("peaceful hooks missing");
   }
-  System.out.println("Bytecode: placement, masked inventories and draw-without-replacement OK");
+  System.out.println("Bytecode: placement, masked inventories and draw-without-replacement and sky teleport hooks OK");
  }
  static ClassNode read(ZipFile jar,String name)throws Exception {ClassNode node=new ClassNode();try(InputStream in=jar.getInputStream(jar.getEntry(name+".class"))){new ClassReader(in).accept(node,0);}return node;}
 }
