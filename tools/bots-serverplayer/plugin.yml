@@ -1,5 +1,5 @@
 name: ElytrixBotsTrain
-version: 2.12-training-test
+version: 2.13-training-test
 main: ru.elytrix.bots.BotsPlugin
 api-version: '1.21.11'
 depend: [GreatCombat]

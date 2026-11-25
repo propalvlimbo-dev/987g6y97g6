@@ -179,6 +179,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         return false;
     }
     private void remove(UUID id) {
+        ProMotion.clear(id);
         TrainingPlayer bot=bots.remove(id); if(bot==null) return;
         owners.remove(bot.getUUID());
         Player p=Bukkit.getPlayer(id);
@@ -225,7 +226,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         double preferredDistance = mode.equals("crit") ? 1.8 : mode.equals("pro") ? 2.0 : mode.equals("combo") ? 1.75 : 2.4;
         boolean chasing=follow && valid && distance>preferredDistance*preferredDistance && distance<4096;
         if (look && valid) face(bot,owner,true); else if (chasing) face(bot,owner,false);
-        bot.zza=chasing?(mode.equals("noob")?0.65f:1.0f):0.0f;
+        bot.zza=ProMotion.forward(chasing?(mode.equals("noob")?0.65f:1.0f):0.0f,mode,distance,now,bot.nextAttackTick);
         boolean strafing=(mode.equals("pro") || mode.equals("combo")) && valid && distance<16 && !prepareCritical;
         if (strafing && now>=bot.nextStrafeTick) {
             bot.strafeDirection = ThreadLocalRandom.current().nextBoolean() ? 1 : -1;
@@ -233,7 +234,8 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         }
         bot.xxa=strafing ? bot.strafeDirection*(mode.equals("pro") ? 0.5f : 0.25f) : 0;
         // A genuine vanilla critical requires falling and not sprinting.
-        bot.setSprinting(chasing && !prepareCritical && now>=bot.sprintResumeTick);
+        bot.setSprinting(ProMotion.sprint(chasing && !prepareCritical && now>=bot.sprintResumeTick,mode,distance,now,bot.nextAttackTick));
+        ProMotion.spin(fake,owner,mode,now,bot.nextAttackTick,chasing);
         if (valid && bot.onGround() && (prepareCritical || (chasing && bot.horizontalCollision))) bot.jumpForCombat();
         if (!attack || !valid || !inRange || now<bot.nextAttackTick || bot.getAttackStrengthScale(0.5f)<0.9f) return;
         if (criticalMode && !(bot.fallDistance>0 && !bot.onGround() && !bot.isSprinting() && !bot.onClimbable() && !bot.isInWater() && !bot.isMobilityRestricted() && !bot.isPassenger())) return;
