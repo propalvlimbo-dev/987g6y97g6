@@ -10,7 +10,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/lib" "$tmp/classes" "$tmp/transform"
 (cd "$tmp/lib" && unzip -q "$leaf" 'META-INF/libraries/*')
 cp="$(find "$tmp/lib" -name '*.jar' -printf '%p:')"
-"$JAVA" -jar "$ECJ" -21 -nowarn -encoding UTF-8 -cp "$cp:$protocol" -d "$tmp/classes" "$root/tools/bots-serverplayer/src/ru/elytrix/bots/TrainingArena.java" "$root/tools/bots-serverplayer/src/ru/elytrix/bots/QuietSounds.java" "$root/tools/bots-serverplayer/src/ru/elytrix/bots/ProCombat.java"
+"$JAVA" -jar "$ECJ" -21 -nowarn -encoding UTF-8 -cp "$cp:$protocol" -d "$tmp/classes" "$root/tools/bots-serverplayer/src/ru/elytrix/bots/TrainingArena.java" "$root/tools/bots-serverplayer/src/ru/elytrix/bots/QuietSounds.java"
 "$JAVA" -jar "$ECJ" -21 -nowarn -cp "$ASM" -d "$tmp/transform" "$root/tools/bots-serverplayer/transform/TrainingTransform.java"
 (cd "$tmp/classes" && unzip -qo "$base")
 cp "$root/tools/bots-serverplayer/plugin.yml" "$tmp/classes/plugin.yml"

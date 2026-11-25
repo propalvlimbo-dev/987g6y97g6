@@ -65,7 +65,7 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
     private void setMode(Player p,String mode) {
         getConfig().set(settingPath(p,"mode"),mode); saveConfig();
         TrainingPlayer bot=bots.get(p.getUniqueId());
-        if(bot!=null) { bot.nextAttackTick=0; bot.criticalPlanned=ThreadLocalRandom.current().nextDouble()<0.65; bot.nextStrafeTick=0; bot.sprintResumeTick=0; }
+        if(bot!=null) { bot.nextAttackTick=0; bot.criticalPlanned=ThreadLocalRandom.current().nextDouble()<0.32; bot.nextStrafeTick=0; bot.sprintResumeTick=0; }
         openMenu(p,2);
     }
     private void openMenu(Player p, int page) {
@@ -225,22 +225,21 @@ public final class BotsPlugin extends JavaPlugin implements Listener {
         double preferredDistance = mode.equals("crit") ? 1.8 : mode.equals("pro") ? 2.0 : mode.equals("combo") ? 1.75 : 2.4;
         boolean chasing=follow && valid && distance>preferredDistance*preferredDistance && distance<4096;
         if (look && valid) face(bot,owner,true); else if (chasing) face(bot,owner,false);
-        bot.zza=ProCombat.input(chasing?(mode.equals("noob")?0.65f:1.0f):0.0f,mode);
+        bot.zza=chasing?(mode.equals("noob")?0.65f:1.0f):0.0f;
         boolean strafing=(mode.equals("pro") || mode.equals("combo")) && valid && distance<16 && !prepareCritical;
         if (strafing && now>=bot.nextStrafeTick) {
             bot.strafeDirection = ThreadLocalRandom.current().nextBoolean() ? 1 : -1;
             bot.nextStrafeTick = now + ThreadLocalRandom.current().nextInt(12, 29);
         }
-        bot.xxa=ProCombat.input(strafing ? bot.strafeDirection*(mode.equals("pro") ? 0.5f : 0.25f) : 0,mode);
+        bot.xxa=strafing ? bot.strafeDirection*(mode.equals("pro") ? 0.5f : 0.25f) : 0;
         // A genuine vanilla critical requires falling and not sprinting.
         bot.setSprinting(chasing && !prepareCritical && now>=bot.sprintResumeTick);
-        ProCombat.tick(fake,owner,mode);
         if (valid && bot.onGround() && (prepareCritical || (chasing && bot.horizontalCollision))) bot.jumpForCombat();
         if (!attack || !valid || !inRange || now<bot.nextAttackTick || bot.getAttackStrengthScale(0.5f)<0.9f) return;
         if (criticalMode && !(bot.fallDistance>0 && !bot.onGround() && !bot.isSprinting() && !bot.onClimbable() && !bot.isInWater() && !bot.isMobilityRestricted() && !bot.isPassenger())) return;
         face(bot,owner,true);
-        bot.nextAttackTick=now+(mode.equals("noob")?26:mode.equals("combo")?12:mode.equals("pro")?8:mode.equals("crit")?10:20);
-        if (mode.equals("pro")) bot.criticalPlanned=ThreadLocalRandom.current().nextDouble()<0.65;
+        bot.nextAttackTick=now+(mode.equals("noob")?26:mode.equals("combo")?12:mode.equals("pro")?11:mode.equals("crit")?10:20);
+        if (mode.equals("pro")) bot.criticalPlanned=ThreadLocalRandom.current().nextDouble()<0.32;
         if (mode.equals("combo") || mode.equals("pro")) bot.sprintResumeTick=now+2;
         if (mode.equals("noob") && ThreadLocalRandom.current().nextDouble()<0.35) {
             bot.swing(InteractionHand.MAIN_HAND); return;
