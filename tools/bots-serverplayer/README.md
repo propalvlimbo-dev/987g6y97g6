@@ -51,3 +51,11 @@ Quiet mode needs an enabled compatible ProtocolLib. If it is unavailable at star
 ## Version 2.10-training-test
 
 Shared world-particle packets and sound broadcasts are suppressed for trainees; this also hides the trainee's own ordinary particles. For uncancelled owner/bot damage events, the plugin sends a private synthetic hit sound only to the owner. It uses a specific volume/pitch marker so ProtocolLib can pass that cue through the mute filter. This does not recreate all vanilla swing/critical sounds and depends on the ProtocolLib sound packet's float layout; unrelated packets from custom plugins or client effects may still be visible or audible. No real-client/production ProtocolLib test was possible.
+
+## Version 2.11-training-test
+
+The personal hit cue chooses `ENTITY_PLAYER_ATTACK_CRIT` when Leaf's `EntityDamageByEntityEvent.isCritical()` is true and a strong-hit cue otherwise; both use the existing private sound packet marker, so other trainees still do not hear these cues. Only successful, uncancelled owner/bot damage events trigger it; the sound is synthetic, and real-client ProtocolLib compatibility and actual critical detection have not been tested here.
+
+Training diamond swords have Bukkit's unbreakable flag, with a training-only item-damage event guard for diamond swords already issued before an update. Other players' tools are unaffected.
+
+Pro gets fast alternating lateral movement and pursuit with bounded velocity, a rotation over eight ticks and a face-toward-target correction before the existing server attack. Pro's attack delay is reduced from 11 to 8 ticks and its subsequent critical-attempt chance increased from 32% to 65%; vanilla cooldown/critical conditions still apply. Incoming knockback is not overridden during the main damage-immunity window. The bot does not teleport or use packet fake entities; existing noob timing and miss probability remain unchanged. Unit tests cover movement maths and inspect the transformed attack/noob code, not PvP realism, anti-cheat, hit reach, 360-degree visuals or combat strength on the actual Leaf server. Disable Leaf parallel world ticking and use backups/test server as already documented.

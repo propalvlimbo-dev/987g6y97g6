@@ -79,6 +79,10 @@ public final class TrainingArena implements Listener {
     private ItemStack decoration(Material material) {
         ItemStack item=new ItemStack(material); ItemMeta meta=item.getItemMeta(); meta.setDisplayName("§r"); item.setItemMeta(meta); return item;
     }
+    private ItemStack trainingSword() {
+        ItemStack sword=new ItemStack(Material.DIAMOND_SWORD); ItemMeta meta=sword.getItemMeta();
+        meta.setUnbreakable(true); sword.setItemMeta(meta); return sword;
+    }
     @EventHandler public void menu(InventoryClickEvent e) {
         if(!(e.getView().getTopInventory().getHolder() instanceof Entry)) return;
         e.setCancelled(true); if(e.getRawSlot()==22 && e.getWhoClicked() instanceof Player p) { p.closeInventory(); enter(p); }
@@ -124,7 +128,7 @@ public final class TrainingArena implements Listener {
         if(!saveSnapshot(p)) { p.sendMessage("§cНе удалось сохранить ваши вещи. Вход отменён."); return; }
         BossBar bar=Bukkit.createBossBar("§a/bots §f— настроить бота",BarColor.GREEN,BarStyle.SOLID); active.put(p.getUniqueId(),bar); QuietSounds.add(p.getUniqueId()); bar.addPlayer(p);
         hideFromOtherTrainees(p);
-        p.getInventory().clear(); p.setItemOnCursor(null); p.getInventory().setItem(0,new ItemStack(Material.DIAMOND_SWORD)); p.getInventory().setHeldItemSlot(0);
+        p.getInventory().clear(); p.setItemOnCursor(null); p.getInventory().setItem(0,trainingSword()); p.getInventory().setHeldItemSlot(0);
         for(PotionEffect effect:p.getActivePotionEffects()) p.removePotionEffect(effect.getType());
         p.setCollidable(false); p.setGameMode(GameMode.SURVIVAL); p.setFlying(false); p.setAllowFlight(false); p.setFoodLevel(20); p.setSaturation(20); p.setFireTicks(0);
         p.setHealth(p.getAttribute(Attribute.MAX_HEALTH).getValue());
@@ -202,6 +206,7 @@ public final class TrainingArena implements Listener {
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void teleport(PlayerTeleportEvent e) { if(training(e.getPlayer()) && !internal.contains(e.getPlayer().getUniqueId())) e.setCancelled(true); }
     @EventHandler(priority=EventPriority.MONITOR) public void changed(PlayerChangedWorldEvent e) { if(training(e.getPlayer()) && !internal.contains(e.getPlayer().getUniqueId())) Bukkit.getScheduler().runTask(plugin,()->restore(e.getPlayer())); }
+    @EventHandler(priority=EventPriority.HIGHEST) public void itemDamage(PlayerItemDamageEvent e) { if(training(e.getPlayer()) && e.getItem().getType()==Material.DIAMOND_SWORD) e.setCancelled(true); }
     @EventHandler(priority=EventPriority.HIGHEST) public void blockBreak(BlockBreakEvent e) { if(training(e.getPlayer())) e.setCancelled(true); }
     @EventHandler(priority=EventPriority.HIGHEST) public void blockPlace(BlockPlaceEvent e) { if(training(e.getPlayer())) e.setCancelled(true); }
     @EventHandler(priority=EventPriority.HIGHEST) public void interact(PlayerInteractEvent e) { if(training(e.getPlayer())) e.setCancelled(true); }
@@ -226,7 +231,7 @@ public final class TrainingArena implements Listener {
         String attackerOwner=attacker.getPersistentDataContainer().get(new NamespacedKey(plugin,"owner"),org.bukkit.persistence.PersistentDataType.STRING);
         if(active.containsKey(attacker.getUniqueId()) && attacker.getUniqueId().toString().equals(targetOwner)) listener=attacker;
         else if(active.containsKey(victim.getUniqueId()) && victim.getUniqueId().toString().equals(attackerOwner)) listener=victim;
-        if(listener!=null) listener.playSound(listener.getLocation(),Sound.ENTITY_PLAYER_ATTACK_STRONG,QuietSounds.CUE_VOLUME,QuietSounds.CUE_PITCH);
+        if(listener!=null) listener.playSound(listener.getLocation(),e.isCritical()?Sound.ENTITY_PLAYER_ATTACK_CRIT:Sound.ENTITY_PLAYER_ATTACK_STRONG,QuietSounds.CUE_VOLUME,QuietSounds.CUE_PITCH);
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void attack(EntityDamageByEntityEvent e) {
         if(e.getDamager() instanceof Player p && training(p)) {
