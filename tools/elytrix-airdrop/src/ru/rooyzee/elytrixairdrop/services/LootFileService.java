@@ -134,21 +134,14 @@ public class LootFileService {
     public void invalidate(String id) { loadAll(); }
     public void invalidateAll() { loadAll(); }
     public List<ItemStack> rollDrops(String id, int nearbyPlayers) {
-        if (migrationBlocked) return Collections.emptyList();
-        double[] chance = nearbyPlayers <= 3 ? new double[]{75,25,5,1} : nearbyPlayers <= 6 ? new double[]{90,50,20,5} : new double[]{100,75,45,15};
-        int max = nearbyPlayers <= 3 ? 3 : nearbyPlayers <= 6 ? 5 : 8;
-        List<ItemStack> result = new ArrayList<>();
-        ThreadLocalRandom random = ThreadLocalRandom.current();
-        for (int i = 1; i <= PAGES; i++) {
-            List<ItemStack> list = pages.get(i);
-            if (!list.isEmpty() && random.nextDouble(100) < chance[i - 1]) result.add(list.get(random.nextInt(list.size())).clone());
-        }
-        if (result.isEmpty()) {
-            List<ItemStack> all = load(id);
-            Collections.shuffle(all);
-            result.addAll(all.subList(0, Math.min(max, all.size())));
-        }
-        return result;
+        return rollRewards(nearbyPlayers, nearbyPlayers <= 3 ? 2 : nearbyPlayers <= 6 ? 3 : 5);
+    }
+    public List<ItemStack> rollRewards(int nearbyPlayers, int amount) {
+        if (migrationBlocked || amount <= 0) return Collections.emptyList();
+        List<List<ItemStack>> source = new ArrayList<>();
+        for (int i = 1; i <= PAGES; i++) source.add(getItems("common", i));
+        List<ItemStack> selected = ru.rooyzee.elytrixairdrop.patch.WeightedLoot.draw(source, amount, nearbyPlayers, ThreadLocalRandom.current(), ItemStack::isSimilar);
+        return copy(selected);
     }
     private static List<ItemStack> copy(List<ItemStack> input) {
         List<ItemStack> result = new ArrayList<>();

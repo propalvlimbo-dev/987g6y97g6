@@ -9,13 +9,16 @@ expected=1ae338dae6e5ffb2ba819ecde808595f4500826f8b8b01f9e8262f1a0b493330
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/classes" "$tmp/compiled"
 (cd "$tmp/classes" && unzip -qo "$ORIGINAL_JAR")
-mapfile -t sources < <(find "$root/src" "$root/test" -name '*.java' | sort)
+mapfile -t sources < <(find "$root/src" -name '*.java' | sort)
 "$JAVA" -jar "$ECJ" -21 -proc:none -nowarn -cp "$ORIGINAL_JAR:$API_CP" -d "$tmp/compiled" "${sources[@]}"
-"$JAVA" -jar "$ECJ" -21 -proc:none -nowarn -cp "$ASM_CP" -d "$tmp/compiled" "$root/transform/Patch.java"
+"$JAVA" -jar "$ECJ" -21 -proc:none -nowarn -cp "$tmp/compiled:$ORIGINAL_JAR:$API_CP:$ASM_CP" -d "$tmp/compiled" "$root/transform/Patch.java" "$root/test/"*.java
 "$JAVA" -cp "$tmp/compiled:$ASM_CP" Patch "$tmp/classes"
 cp -R "$tmp/compiled/ru" "$tmp/classes/"
 "$JAVA" -cp "$tmp/compiled:$ORIGINAL_JAR:$API_CP" NearbyRewardsTest
+"$JAVA" -cp "$tmp/compiled:$ORIGINAL_JAR:$API_CP" WeightedLootTest
 sed -i 's/^version: 1.0.0/version: 1.0.0-test-elytrix/' "$tmp/classes/plugin.yml"
 mkdir -p "$(dirname "$OUTPUT_JAR")"
-(cd "$tmp/classes" && zip -q -r "$OUTPUT_JAR" .)
-unzip -t "$OUTPUT_JAR" | tail -1
+(cd "$tmp/classes" && zip -q -r "$tmp/output.jar" .)
+unzip -t "$tmp/output.jar" | tail -1
+"$JAVA" -cp "$tmp/compiled:$ASM_CP" BytecodeTest "$tmp/output.jar"
+mv "$tmp/output.jar" "$OUTPUT_JAR"

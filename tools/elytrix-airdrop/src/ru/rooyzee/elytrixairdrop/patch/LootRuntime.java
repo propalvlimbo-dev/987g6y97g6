@@ -39,10 +39,7 @@ public final class LootRuntime implements Listener {
     public static void preparePeaceful(ActiveAirdrop event, List<ItemStack> pending) {
         pending.clear();
         int nearby = NearbyRewards.players(event.getCenter());
-        List<ItemStack> pool = Main.getInstance().getAirdropManager().getLootFileService().rollDrops("common", nearby);
-        if (pool.isEmpty()) return;
         int amount = 5 * perContainer(event);
-        Random random = new Random();
-        for (int i = 0; i < amount; i++) pending.add(pool.get(random.nextInt(pool.size())).clone());
+        pending.addAll(Main.getInstance().getAirdropManager().getLootFileService().rollRewards(nearby, amount));
     }
 }
