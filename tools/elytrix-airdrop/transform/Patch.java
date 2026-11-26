@@ -11,9 +11,8 @@ public class Patch implements Opcodes {
     patch(root,base+"listeners/ProtectionListener");
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
-    patch(root,base+"airdrops/types/ActiveFireAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 15) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 12) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -30,6 +29,15 @@ public class Patch implements Opcodes {
         x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/SkyMechanics","skyActive","(L"+base+"Main;)Z",false));
         x.add(new JumpInsnNode(IFEQ,keep)); x.add(new InsnNode(RETURN)); x.add(keep); x.add(new FrameNode(F_SAME,0,null,0,null));
         m.instructions.insert(x); hooks++;
+      }
+      if(name.equals(base+"managers/AirdropManager") && m.name.equals("stop")) {
+        for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) if(n instanceof MethodInsnNode) {
+          MethodInsnNode call=(MethodInsnNode)n;
+          if(call.owner.equals("org/bukkit/entity/Entity") && call.name.equals("remove") && call.desc.equals("()V")) {
+            m.instructions.insertBefore(n,new VarInsnNode(ALOAD,2));
+            m.instructions.set(n,new MethodInsnNode(INVOKESTATIC,base+"patch/FireCleanup","cleanup","(Lorg/bukkit/entity/Entity;L"+base+"airdrops/ActiveAirdrop;)V",false));hooks++;break;
+          }
+        }
       }
       if(name.equals(base+"managers/AirdropManager") && m.name.equals("start")) {
         for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) if(n instanceof MethodInsnNode && ((MethodInsnNode)n).name.equals("pasteAndBackup")) {

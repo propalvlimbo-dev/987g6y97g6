@@ -13,10 +13,12 @@ mapfile -t sources < <(find "$root/src" -name '*.java' | sort)
 "$JAVA" -jar "$ECJ" -21 -proc:none -nowarn -cp "$ORIGINAL_JAR:$API_CP" -d "$tmp/compiled" "${sources[@]}"
 "$JAVA" -jar "$ECJ" -21 -proc:none -nowarn -cp "$tmp/compiled:$ORIGINAL_JAR:$API_CP:$ASM_CP" -d "$tmp/tests" "$root/transform/Patch.java" $(find "$root/test" -name '*.java' | sort)
 "$JAVA" -cp "$tmp/tests:$ASM_CP" Patch "$tmp/classes"
+rm -f "$tmp/classes/ru/rooyzee/elytrixairdrop/airdrops/types/ActiveFireAirdrop$"*.class
 cp -R "$tmp/compiled/ru" "$tmp/classes/"
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" NearbyRewardsTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" WeightedLootTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.SkyMechanicsTest
+"$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.FireScheduleTest
 sed -i 's/^version: 1.0.0/version: 1.0.0-test-elytrix/' "$tmp/classes/plugin.yml"
 mkdir -p "$(dirname "$OUTPUT_JAR")"
 (cd "$tmp/classes" && zip -q -r "$tmp/output.jar" .)
