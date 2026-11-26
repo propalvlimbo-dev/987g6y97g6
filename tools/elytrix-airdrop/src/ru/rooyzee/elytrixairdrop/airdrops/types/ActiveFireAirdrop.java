@@ -37,6 +37,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private static final long COOLING_MS=180_000L;
  private final List<Location> surface=new ArrayList<>();
  private final List<Flight> flights=new ArrayList<>();
+ private final List<Debris> debris=new ArrayList<>();
  private static final int RADIUS=MeteorGeometry.RADIUS;
  private final List<Location> meteorBlocks=new ArrayList<>();
  private final List<Location> coolingBlocks=new ArrayList<>();
@@ -85,6 +86,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  @Override public void onStop(Main plugin,ConfigurationSection config){
   if(animationTask!=null){animationTask.cancel();animationTask=null;}
   for(Flight f:flights)f.remove();flights.clear();
+  for(Debris d:debris)d.display.remove();debris.clear();
   if(loot!=null)for(org.bukkit.entity.HumanEntity viewer:new ArrayList<>(loot.getViewers()))viewer.closeInventory();
   rewards.clear();cooldowns.clear();
  }
@@ -161,6 +163,8 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  }
  private void animate(){
   if(plugin.getAirdropManager().getActive()!=this)return;
+  Iterator<Debris> fragments=debris.iterator();
+  while(fragments.hasNext()){Debris d=fragments.next();if(d.advance()){d.display.remove();fragments.remove();}}
   Iterator<Flight> it=flights.iterator();
   while(it.hasNext()){
    Flight f=it.next();if(!f.advance())continue;
@@ -185,6 +189,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   // Back up the complete sphere before modifying any block. Never overwrite a tile entity.
   for(Location loc:planned){Block b=loc.getBlock();getBackup().putIfAbsent(loc,new SchematicManager.BlockData(b.getType(),b.getBlockData().getAsString()));}
   try {
+   carveImpact(planned);
    chestLocation=meteorCenter.clone();
    for(Location loc:planned){
     if(loc.equals(chestLocation)){loc.getBlock().setType(Material.CHEST,false);continue;}
@@ -196,6 +201,49 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   w.playSound(impact,Sound.ENTITY_GENERIC_EXPLODE,0.9f,0.65f);
   w.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE,impact,8,1.0,0.3,1.0,0.02);
  }
+ /** Carve a shallow impact crater only in solid blocks already covered by the event backup. */
+ private void carveImpact(List<Location> meteor){
+  Set<Location> occupied=new HashSet<>(meteor);
+  int surfaceY=centerLanding.getBlockY();
+  for(int dx=-5;dx<=5;dx++)for(int dz=-5;dz<=5;dz++){
+   int distance=dx*dx+dz*dz;if(distance>25)continue;
+   for(int depth=0;depth<=1;depth++){
+    if(depth==1&&distance>16)continue;
+    Location loc=centerLanding.clone().add(dx,-depth,dz).getBlock().getLocation();
+    Block block=loc.getBlock();
+    if(loc.getBlockY()!=surfaceY-depth || occupied.contains(loc) || !getBackup().containsKey(loc)
+       || !block.getType().isSolid() || block.getState() instanceof TileState)continue;
+    block.setType(Material.AIR,false);
+   }
+  }
+ }
+ /** Fake flying fragments: visual displays only, never remove or drop the original blocks. */
+ private void spawnDebris(Location impact){
+  World world=impact.getWorld();if(world==null)return;
+  List<Location> sources=new ArrayList<>();
+  Location base=impact.clone().subtract(0,0.1,0).getBlock().getLocation();
+  for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++){
+   Location loc=base.clone().add(dx,0,dz);Block block=loc.getBlock();
+   if((getBackup().containsKey(loc)||meteorBlocks.contains(loc)) && block.getType().isSolid() && !(block.getState() instanceof TileState))sources.add(loc);
+  }
+  Collections.shuffle(sources);
+  for(int i=0;i<Math.min(6,sources.size());i++){
+   Location source=sources.get(i);double angle=ThreadLocalRandom.current().nextDouble(Math.PI*2);
+   double speed=ThreadLocalRandom.current().nextDouble(0.08,0.18);
+   try{
+    BlockDisplay display=world.spawn(source.clone(),BlockDisplay.class,d->{d.setBlock(source.getBlock().getBlockData());d.setPersistent(false);d.setTeleportDuration(1);});
+    debris.add(new Debris(display,source.clone(),new Vector(Math.cos(angle)*speed,ThreadLocalRandom.current().nextDouble(0.18,0.29),Math.sin(angle)*speed)));
+   }catch(RuntimeException ex){plugin.getLogger().warning("Unable to show meteor debris: "+ex.getMessage());}
+  }
+ }
+ private final class Debris{
+  final BlockDisplay display;final Location position;final Vector velocity;int age;
+  Debris(BlockDisplay display,Location position,Vector velocity){this.display=display;this.position=position;this.velocity=velocity;}
+  boolean advance(){
+   if(++age>=12 || !display.isValid())return true;
+   position.add(velocity);velocity.setY(velocity.getY()-0.04);display.teleport(position);return false;
+  }
+ }
  private void coolMeteor(long now){
   int total=coolingBlocks.size();long elapsed=now-landedAt;
   int goal=FireSchedule.cooledBlocks(total,elapsed,COOLING_MS);
@@ -205,9 +253,10 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   World world=impact.getWorld();if(world==null)return;
   world.playSound(impact,Sound.BLOCK_ANVIL_LAND,0.45f,0.7f);
   world.spawnParticle(Particle.SMOKE,impact,5,0.4,0.2,0.4,0.02);
+  spawnDebris(impact);
   for(Player player:world.getPlayers()){
    if(player.getGameMode()==GameMode.CREATIVE||player.getGameMode()==GameMode.SPECTATOR||player.isDead())continue;
-   if(player.getLocation().distanceSquared(impact)<=16.0)player.damage(5.0);
+   if(player.getLocation().distanceSquared(impact)<=16.0)player.damage(9.0);
   }
   if(!award)return;
   int nearby=NearbyRewards.players(getCenter());

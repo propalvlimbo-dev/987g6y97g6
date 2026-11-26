@@ -19,6 +19,19 @@ public class BytecodeTest implements Opcodes {
    boolean damage=false,drop=false;
    for(MethodNode m:fire.methods)if(m.name.equals("impactSmall"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("damage"))damage=true;if(a.name.equals("dropItemNaturally"))drop=true;if(a.name.equals("setType")||a.name.equals("createExplosion"))throw new AssertionError("small impact changes terrain");}
    if(!damage||!drop)throw new AssertionError("small meteor impact missing");
+   boolean debrisHook=false,crater=false,guard=false,fragmentSpawn=false,fragmentCleanup=false,damageValue=false;
+   for(MethodNode m:fire.methods)for(AbstractInsnNode i:m.instructions){
+    if(m.name.equals("impactSmall") && i instanceof LdcInsnNode && Double.valueOf(9.0).equals(((LdcInsnNode)i).cst))damageValue=true;
+    if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;
+     if(m.name.equals("impactSmall")&&call.name.equals("spawnDebris"))debrisHook=true;
+     if(m.name.equals("carveImpact")&&call.name.equals("setType"))crater=true;
+     if(m.name.equals("carveImpact")&&call.name.equals("containsKey"))guard=true;
+     if(m.name.equals("spawnDebris")&&call.name.equals("spawn"))fragmentSpawn=true;
+     if(m.name.equals("spawnDebris")&&(call.name.equals("setType")||call.name.equals("dropItemNaturally")))throw new AssertionError("debris mutates terrain or drops items");
+     if(m.name.equals("onStop")&&call.name.equals("remove"))fragmentCleanup=true;
+    }
+   }
+   if(!debrisHook||!crater||!guard||!fragmentSpawn||!fragmentCleanup||!damageValue)throw new AssertionError("impact visual, terrain guard or damage missing");
    ClassNode protection=read(jar,BASE+"listeners/ProtectionListener");int bypass=0;
    for(MethodNode m:protection.methods)if(m.name.equals("onTeleport")||m.name.equals("onPearlThrow"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/SkyMechanics") && ((MethodInsnNode)i).name.equals("skyActive"))bypass++;
    if(bypass!=2)throw new AssertionError("sky teleport hooks "+bypass);
