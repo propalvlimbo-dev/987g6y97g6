@@ -10,6 +10,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.TileState;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Player;
@@ -26,6 +27,7 @@ import ru.rooyzee.elytrixairdrop.airdrops.ActiveAirdrop;
 import ru.rooyzee.elytrixairdrop.airdrops.Airdrop;
 import ru.rooyzee.elytrixairdrop.managers.SchematicManager;
 import ru.rooyzee.elytrixairdrop.patch.FireSchedule;
+import ru.rooyzee.elytrixairdrop.patch.MeteorGeometry;
 import ru.rooyzee.elytrixairdrop.patch.LootRuntime;
 import ru.rooyzee.elytrixairdrop.patch.NearbyRewards;
 import ru.rooyzee.elytrixairdrop.utils.ColorUtil;
@@ -35,7 +37,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private static final long COOLING_MS=180_000L;
  private final List<Location> surface=new ArrayList<>();
  private final List<Flight> flights=new ArrayList<>();
- private static final int RADIUS=3;
+ private static final int RADIUS=MeteorGeometry.RADIUS;
  private final List<Location> meteorBlocks=new ArrayList<>();
  private final List<Location> coolingBlocks=new ArrayList<>();
  private final Map<Integer,ItemStack> rewards=new HashMap<>();
@@ -104,17 +106,31 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  }
  private void findMeteorSpace(){
   if(centerLanding==null)return;
-  int max=centerLanding.getWorld().getMaxHeight();
-  for(int rise=RADIUS+1;rise<=RADIUS+9;rise++){
-   Location center=centerLanding.clone().add(0,rise,0);if(center.getBlockY()+RADIUS>=max)break;
-   boolean clear=true;
-   for(int x=-RADIUS;x<=RADIUS && clear;x++)for(int y=-RADIUS;y<=RADIUS && clear;y++)for(int z=-RADIUS;z<=RADIUS;z++){
-    if(x*x+y*y+z*z>RADIUS*RADIUS)continue;
-    if(!center.clone().add(x,y,z).getBlock().getType().isAir()){clear=false;break;}
-   }
-   if(clear){meteorCenter=center.getBlock().getLocation();return;}
+  // Try the most central surface first. The sphere sinks two layers into that surface.
+  List<Location> candidates=new ArrayList<>(surface);
+  candidates.sort(Comparator.comparingDouble(loc->{double x=loc.getX()-getCenter().getBlockX(),z=loc.getZ()-getCenter().getBlockZ();return x*x+z*z;}));
+  for(Location landing:candidates){
+   double dx=landing.getX()-getCenter().getBlockX(),dz=landing.getZ()-getCenter().getBlockZ();
+   if(dx*dx+dz*dz>144)break;
+   Location candidate=landing.clone().add(0,RADIUS-1,0).getBlock().getLocation();
+   if(candidate.getBlockY()+RADIUS>=candidate.getWorld().getMaxHeight() || candidate.getBlockY()-RADIUS<candidate.getWorld().getMinHeight())continue;
+   if(canPlaceMeteor(candidate,landing.getBlockY())){centerLanding=landing;meteorCenter=candidate;return;}
   }
  }
+ private boolean canPlaceMeteor(Location center,int surfaceY){
+  for(int x=-RADIUS;x<=RADIUS;x++)for(int y=-RADIUS;y<=RADIUS;y++)for(int z=-RADIUS;z<=RADIUS;z++){
+   if(!MeteorGeometry.contains(x,y,z))continue;
+   Location loc=center.clone().add(x,y,z).getBlock().getLocation();Block block=loc.getBlock();
+   if(block.getType().isAir())continue;
+   // Only replace known backed-up, solid blocks in the two upper impact layers.
+   // Never touch inventories or other tile entities, liquids, or blocks above the surface.
+   if(loc.getBlockY()>surfaceY || loc.getBlockY()<surfaceY-1 || !getBackup().containsKey(loc)
+       || !block.getType().isSolid() || block.getState() instanceof TileState)return false;
+  }
+  Block anchor=centerLandingFor(center,surfaceY).getBlock();
+  return anchor.getType().isSolid() && !(anchor.getState() instanceof TileState) && getBackup().containsKey(anchor.getLocation());
+ }
+ private Location centerLandingFor(Location center,int surfaceY){return center.clone().add(0,surfaceY-center.getBlockY(),0);}
  private Location chooseSmallTarget(){
   World world=getCenter().getWorld();List<Player> targets=new ArrayList<>();
   for(Player p:world.getPlayers())if(p.getGameMode()!=GameMode.CREATIVE && p.getGameMode()!=GameMode.SPECTATOR && !p.isDead() && p.getLocation().distanceSquared(getCenter())<=400)targets.add(p);
@@ -135,9 +151,9 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  }
  private void startFlight(Location surfaceBlock,boolean large,boolean award){
   World w=surfaceBlock.getWorld();if(w==null)return;
-  Location end=large?meteorCenter.clone().add(0.5,0,0.5):surfaceBlock.clone().add(0.5,1.0,0.5);
+  Location end=large?meteorCenter.clone():surfaceBlock.clone().add(0.5,1.0,0.5);
   double angle=ThreadLocalRandom.current().nextDouble(Math.PI*2);
-  double side=large?25:12,height=large?50:32;
+  double side=large?20:12,height=large?45:32;
   Location start=end.clone().add(Math.cos(angle)*side,height,Math.sin(angle)*side);
   try{flights.add(new Flight(start,end,large,award));}
   catch(RuntimeException ex){plugin.getLogger().severe("Fire meteor could not be spawned: "+ex.getMessage());Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
@@ -157,15 +173,14 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private void landMain(Location impact){
   if(phase!=Phase.FALLING || meteorCenter==null)return;
   World w=meteorCenter.getWorld();if(w==null)return;
+  // Re-check immediately before impact: another plugin or player may have changed it.
+  if(!canPlaceMeteor(meteorCenter,centerLanding.getBlockY())){
+   plugin.getLogger().severe("Fire meteor impact space changed or contains unsafe blocks; cancelling without overwriting them.");
+   Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;
+  }
   List<Location> planned=new ArrayList<>();
   for(int x=-RADIUS;x<=RADIUS;x++)for(int y=-RADIUS;y<=RADIUS;y++)for(int z=-RADIUS;z<=RADIUS;z++){
-   if(x*x+y*y+z*z>RADIUS*RADIUS)continue;
-   Location loc=meteorCenter.clone().add(x,y,z).getBlock().getLocation();
-   if(!loc.getBlock().getType().isAir()){
-    plugin.getLogger().severe("Fire meteor landing space became occupied; cancelling without overwriting blocks.");
-    Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;
-   }
-   planned.add(loc);
+   if(MeteorGeometry.contains(x,y,z))planned.add(meteorCenter.clone().add(x,y,z).getBlock().getLocation());
   }
   // Back up the complete sphere before modifying any block. Never overwrite a tile entity.
   for(Location loc:planned){Block b=loc.getBlock();getBackup().putIfAbsent(loc,new SchematicManager.BlockData(b.getType(),b.getBlockData().getAsString()));}
@@ -251,16 +266,15 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
    World world=start.getWorld();if(world==null)return;
    int radius=large?RADIUS:1;
    try { for(int x=-radius;x<=radius;x++)for(int y=-radius;y<=radius;y++)for(int z=-radius;z<=radius;z++){
-    if(x*x+y*y+z*z>radius*radius+(large?0:1))continue;
-    if(!large && x*x+y*y+z*z>1)continue;
+    if(large ? !MeteorGeometry.contains(x,y,z) : x*x+y*y+z*z>1)continue;
     Vector offset=new Vector(x,y,z);Material material=large?Material.MAGMA_BLOCK:(ThreadLocalRandom.current().nextInt(3)==0?Material.MAGMA_BLOCK:Material.BLACKSTONE);
-    BlockDisplay display=world.spawn(start.clone().add(offset),BlockDisplay.class,d->{d.setBlock(material.createBlockData());d.setPersistent(false);d.setInterpolationDuration(4);d.setTeleportDuration(4);});
+    BlockDisplay display=world.spawn(start.clone().add(offset),BlockDisplay.class,d->{d.setBlock(material.createBlockData());d.setPersistent(false);d.setInterpolationDuration(2);d.setTeleportDuration(2);});
     offsets.add(offset);displays.add(display);
    }} catch(RuntimeException ex){remove();throw ex;}
   }
   boolean advance(){
-   age++;int duration=large?90:65;double t=Math.min(1.0,age/(double)duration);double progress=t*t*(3-2*t);
-   if(age%4==0||age>=duration){
+   age++;int duration=large?35:50;double progress=MeteorGeometry.flightProgress(age,duration);
+   if(age%2==0||age>=duration){
     Location loc=start.clone().add(end.toVector().subtract(start.toVector()).multiply(progress));
     for(int i=0;i<displays.size();i++)displays.get(i).teleport(loc.clone().add(offsets.get(i)));
     if(age%8==0&&loc.getWorld()!=null)loc.getWorld().spawnParticle(Particle.SMOKE,loc,large?3:1,0.25,0.25,0.25,0.01);
