@@ -37,6 +37,12 @@ public class BytecodeTest implements Opcodes {
    ClassNode peace=read(jar,BASE+"airdrops/types/ActivePeacefulAirdrop");boolean generate=false,tracked=false;
    for(MethodNode m:peace.methods)if(m.name.equals("openLoot"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;if(call.name.equals("preparePeaceful"))generate=true;if(call.name.equals("track"))tracked=true;}
    if(!generate||!tracked)throw new AssertionError("peaceful hooks missing");
+   int limitChanges=0;boolean waveSize=false;
+   for(MethodNode m:peace.methods)if(m.name.equals("spawnWave")||m.name.equals("handleLootClick"))for(AbstractInsnNode i:m.instructions){
+    if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/PeacefulWave") && ((MethodInsnNode)i).name.equals("size"))waveSize=true;
+    if(i instanceof IntInsnNode && ((IntInsnNode)i).operand==48 && i.getOpcode()==BIPUSH)limitChanges++;
+   }
+   if(!waveSize||limitChanges!=2)throw new AssertionError("peaceful 1-2 wave or limit missing");
   }
   System.out.println("Bytecode: placement, masked inventories and draw-without-replacement sky teleport hooks, no chest reopen, sideways wind or delayed push OK");
  }

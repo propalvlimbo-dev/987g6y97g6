@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 12) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 15) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -54,6 +54,17 @@ public class Patch implements Opcodes {
         m.instructions.insertBefore(start,new InsnNode(RETURN));
         for(AbstractInsnNode n=start;n!=null;) {AbstractInsnNode next=n.getNext();m.instructions.remove(n);n=next;}
         m.localVariables=null; hooks++;
+      }
+      if(name.endsWith("ActivePeacefulAirdrop") && (m.name.equals("spawnWave") || m.name.equals("handleLootClick"))) {
+        for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) {
+          if(n instanceof IntInsnNode && n.getOpcode()==BIPUSH && ((IntInsnNode)n).operand==8){
+            AbstractInsnNode before=n.getPrevious();while(before!=null&&before.getOpcode()<0)before=before.getPrevious();
+            if(before instanceof FieldInsnNode && ((FieldInsnNode)before).name.equals("wavesSpawned")){((IntInsnNode)n).operand=48;hooks++;}
+          }
+          if(m.name.equals("spawnWave") && n instanceof IntInsnNode && n.getOpcode()==BIPUSH && ((IntInsnNode)n).operand==6){
+            m.instructions.set(n,new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulWave","size","()I",false));hooks++;
+          }
+        }
       }
       if(name.endsWith("ActivePeacefulAirdrop") && m.name.equals("openLoot")) {
         InsnList x=new InsnList(); x.add(new VarInsnNode(ALOAD,0)); x.add(new VarInsnNode(ALOAD,0)); x.add(new FieldInsnNode(GETFIELD,name,"pendingLoot","Ljava/util/List;")); x.add(new MethodInsnNode(INVOKESTATIC,runtime,"preparePeaceful","(L"+base+"airdrops/ActiveAirdrop;Ljava/util/List;)V",false)); m.instructions.insert(x); hooks++;

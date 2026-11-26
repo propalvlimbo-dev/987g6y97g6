@@ -13,6 +13,7 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Item;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
@@ -34,39 +35,46 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private static final long COOLING_MS=180_000L;
  private final List<Location> surface=new ArrayList<>();
  private final List<Flight> flights=new ArrayList<>();
- private final List<BlockDisplay> landedDisplays=new ArrayList<>();
+ private static final int RADIUS=3;
+ private final List<Location> meteorBlocks=new ArrayList<>();
+ private final List<Location> coolingBlocks=new ArrayList<>();
  private final Map<Integer,ItemStack> rewards=new HashMap<>();
  private final Map<UUID,Long> cooldowns=new HashMap<>();
  private Main plugin;
  private BukkitTask animationTask;
  private Inventory loot;
- private Location centerLanding,chestLocation;
+ private Location centerLanding,meteorCenter,chestLocation;
  private long enteredAt,landedAt,unlockAt,lastSmallStart;
- private int smallStarted;
+ private int smallStarted,cooled;
+ private boolean firstInPairReward;
  private Phase phase=Phase.WAITING;
  private boolean looted;
  private enum Phase { WAITING, FALLING, COOLING, OPEN }
 
  public ActiveFireAirdrop(Location center,String region,String hologram,Map<Location,SchematicManager.BlockData> backup,long endTime){super(Airdrop.FIRE,center,region,hologram,backup,endTime);}
  @Override public void onStart(Main plugin,ConfigurationSection config){
-  this.plugin=plugin;findSurface();updateHologram(config);
-  if(centerLanding==null){plugin.getLogger().severe("Fire airdrop: no solid schematic surface found");Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
+  this.plugin=plugin;findSurface();findMeteorSpace();updateHologram(config);
+  if(centerLanding==null || meteorCenter==null){plugin.getLogger().severe("Fire airdrop: no safe air space for the meteor above the schematic");Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
   animationTask=Bukkit.getScheduler().runTaskTimer(plugin,this::animate,1L,1L);
  }
  @Override public void onTick(Main plugin,ConfigurationSection config){
   long now=System.currentTimeMillis();
   if(phase==Phase.WAITING && centerLanding!=null && hasRegionPlayer()){
-   enteredAt=now;phase=Phase.FALLING;startFlight(centerLanding,true);
+   enteredAt=now;phase=Phase.FALLING;startFlight(centerLanding,true,false);
   }
   if(phase==Phase.COOLING){
+   coolMeteor(now);
    if(now>=unlockAt){phase=Phase.OPEN;createLoot();}
    else if(now>=enteredAt+10_000L){
     int nearby=NearbyRewards.players(getCenter());
     int limit=FireSchedule.target(nearby);
     long interval=FireSchedule.intervalMillis(nearby,smallStarted,unlockAt-now);
-    if(smallStarted<limit && now+1500L<unlockAt && (smallStarted==0 || now-lastSmallStart>=interval)){
-     Location target=surface.get(ThreadLocalRandom.current().nextInt(surface.size()));
-     startFlight(target,false);smallStarted++;lastSmallStart=now;
+    if(smallStarted<limit && now+3500L<unlockAt && (smallStarted==0 || now-lastSmallStart>=interval)){
+     Location target=chooseSmallTarget();
+     if(target==null)return;
+     if(smallStarted%2==0)firstInPairReward=ThreadLocalRandom.current().nextBoolean();
+     boolean award=FireSchedule.carriesLoot(smallStarted,firstInPairReward);
+     startFlight(target,false,award);smallStarted++;lastSmallStart=now;
     }
    }
   }
@@ -75,7 +83,6 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  @Override public void onStop(Main plugin,ConfigurationSection config){
   if(animationTask!=null){animationTask.cancel();animationTask=null;}
   for(Flight f:flights)f.remove();flights.clear();
-  for(BlockDisplay d:landedDisplays)d.remove();landedDisplays.clear();
   if(loot!=null)for(org.bukkit.entity.HumanEntity viewer:new ArrayList<>(loot.getViewers()))viewer.closeInventory();
   rewards.clear();cooldowns.clear();
  }
@@ -95,13 +102,44 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   surface.addAll(columns.values());double best=Double.MAX_VALUE;
   for(Location loc:surface){double dx=loc.getBlockX()-getCenter().getBlockX(),dz=loc.getBlockZ()-getCenter().getBlockZ(),d=dx*dx+dz*dz;if(d<best){best=d;centerLanding=loc;}}
  }
- private void startFlight(Location surfaceBlock,boolean large){
+ private void findMeteorSpace(){
+  if(centerLanding==null)return;
+  int max=centerLanding.getWorld().getMaxHeight();
+  for(int rise=RADIUS+1;rise<=RADIUS+9;rise++){
+   Location center=centerLanding.clone().add(0,rise,0);if(center.getBlockY()+RADIUS>=max)break;
+   boolean clear=true;
+   for(int x=-RADIUS;x<=RADIUS && clear;x++)for(int y=-RADIUS;y<=RADIUS && clear;y++)for(int z=-RADIUS;z<=RADIUS;z++){
+    if(x*x+y*y+z*z>RADIUS*RADIUS)continue;
+    if(!center.clone().add(x,y,z).getBlock().getType().isAir()){clear=false;break;}
+   }
+   if(clear){meteorCenter=center.getBlock().getLocation();return;}
+  }
+ }
+ private Location chooseSmallTarget(){
+  World world=getCenter().getWorld();List<Player> targets=new ArrayList<>();
+  for(Player p:world.getPlayers())if(p.getGameMode()!=GameMode.CREATIVE && p.getGameMode()!=GameMode.SPECTATOR && !p.isDead() && p.getLocation().distanceSquared(getCenter())<=400)targets.add(p);
+  if(!targets.isEmpty()){
+   Player chosen=targets.get(ThreadLocalRandom.current().nextInt(targets.size()));Location loc=chosen.getLocation();
+   Location under=loc.clone().subtract(0,0.2,0).getBlock().getLocation();
+   if(meteorBlocks.contains(under) && under.clone().add(0,1,0).getBlock().getType().isAir())return under;
+   double tx=loc.getX()+ThreadLocalRandom.current().nextDouble(-1.5,1.5),tz=loc.getZ()+ThreadLocalRandom.current().nextDouble(-1.5,1.5);
+   Location best=null;double score=Double.MAX_VALUE;
+   for(Location candidate:surface){
+    if(!candidate.clone().add(0,1,0).getBlock().getType().isAir())continue;
+    double dx=candidate.getX()+0.5-tx,dz=candidate.getZ()+0.5-tz,dy=Math.abs(candidate.getY()+1-loc.getY());double d=dx*dx+dz*dz+dy*dy*2;
+    if(d<score){score=d;best=candidate;}}
+   if(best!=null)return best;
+  }
+  List<Location> open=new ArrayList<>();for(Location candidate:surface)if(candidate.clone().add(0,1,0).getBlock().getType().isAir())open.add(candidate);
+  return open.isEmpty()?null:open.get(ThreadLocalRandom.current().nextInt(open.size()));
+ }
+ private void startFlight(Location surfaceBlock,boolean large,boolean award){
   World w=surfaceBlock.getWorld();if(w==null)return;
-  Location end=surfaceBlock.clone().add(0.5,1.0,0.5);
+  Location end=large?meteorCenter.clone().add(0.5,0,0.5):surfaceBlock.clone().add(0.5,1.0,0.5);
   double angle=ThreadLocalRandom.current().nextDouble(Math.PI*2);
   double side=large?25:12,height=large?50:32;
   Location start=end.clone().add(Math.cos(angle)*side,height,Math.sin(angle)*side);
-  try{flights.add(new Flight(start,end,large));}
+  try{flights.add(new Flight(start,end,large,award));}
   catch(RuntimeException ex){plugin.getLogger().severe("Fire meteor could not be spawned: "+ex.getMessage());Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
   w.playSound(end,large?Sound.ENTITY_ENDER_DRAGON_GROWL:Sound.ENTITY_BLAZE_SHOOT,large?0.65f:0.35f,large?0.65f:0.8f);
  }
@@ -111,26 +149,44 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   while(it.hasNext()){
    Flight f=it.next();if(!f.advance())continue;
    it.remove();
-   if(f.large){landedDisplays.addAll(f.displays);landMain(f.end);}
-   else{f.remove();impactSmall(f.end);}
+   f.remove();
+   if(f.large)landMain(f.end);
+   else impactSmall(f.end,f.award);
   }
  }
  private void landMain(Location impact){
-  if(phase!=Phase.FALLING)return;
-  World w=impact.getWorld();if(w==null)return;
-  landedAt=System.currentTimeMillis();unlockAt=landedAt+COOLING_MS;phase=Phase.COOLING;
-  // Only write into air: never replace a schematic block or a tile entity.
-  for(int dy=3;dy<=8;dy++){
-   Block b=impact.clone().add(0,dy,0).getBlock();
-   if(!b.getType().isAir())continue;
-   Location key=b.getLocation();getBackup().putIfAbsent(key,new SchematicManager.BlockData(b.getType(),b.getBlockData().getAsString()));
-   b.setType(Material.CHEST,false);chestLocation=key;break;
+  if(phase!=Phase.FALLING || meteorCenter==null)return;
+  World w=meteorCenter.getWorld();if(w==null)return;
+  List<Location> planned=new ArrayList<>();
+  for(int x=-RADIUS;x<=RADIUS;x++)for(int y=-RADIUS;y<=RADIUS;y++)for(int z=-RADIUS;z<=RADIUS;z++){
+   if(x*x+y*y+z*z>RADIUS*RADIUS)continue;
+   Location loc=meteorCenter.clone().add(x,y,z).getBlock().getLocation();
+   if(!loc.getBlock().getType().isAir()){
+    plugin.getLogger().severe("Fire meteor landing space became occupied; cancelling without overwriting blocks.");
+    Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;
+   }
+   planned.add(loc);
   }
-  if(chestLocation==null){plugin.getLogger().severe("Fire airdrop: no empty place for meteor chest");Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
+  // Back up the complete sphere before modifying any block. Never overwrite a tile entity.
+  for(Location loc:planned){Block b=loc.getBlock();getBackup().putIfAbsent(loc,new SchematicManager.BlockData(b.getType(),b.getBlockData().getAsString()));}
+  try {
+   chestLocation=meteorCenter.clone();
+   for(Location loc:planned){
+    if(loc.equals(chestLocation)){loc.getBlock().setType(Material.CHEST,false);continue;}
+    loc.getBlock().setType(Material.MAGMA_BLOCK,false);meteorBlocks.add(loc);coolingBlocks.add(loc);
+   }
+  }catch(RuntimeException ex){plugin.getLogger().severe("Fire meteor placement failed: "+ex.getMessage());Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
+  Collections.shuffle(coolingBlocks);
+  landedAt=System.currentTimeMillis();unlockAt=landedAt+COOLING_MS;phase=Phase.COOLING;
   w.playSound(impact,Sound.ENTITY_GENERIC_EXPLODE,0.9f,0.65f);
   w.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE,impact,8,1.0,0.3,1.0,0.02);
  }
- private void impactSmall(Location impact){
+ private void coolMeteor(long now){
+  int total=coolingBlocks.size();long elapsed=now-landedAt;
+  int goal=FireSchedule.cooledBlocks(total,elapsed,COOLING_MS);
+  while(cooled<goal){Location loc=coolingBlocks.get(cooled++);if(loc.getBlock().getType()==Material.MAGMA_BLOCK)loc.getBlock().setType(Material.OBSIDIAN,false);}
+ }
+ private void impactSmall(Location impact,boolean award){
   World world=impact.getWorld();if(world==null)return;
   world.playSound(impact,Sound.BLOCK_ANVIL_LAND,0.45f,0.7f);
   world.spawnParticle(Particle.SMOKE,impact,5,0.4,0.2,0.4,0.02);
@@ -138,9 +194,10 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
    if(player.getGameMode()==GameMode.CREATIVE||player.getGameMode()==GameMode.SPECTATOR||player.isDead())continue;
    if(player.getLocation().distanceSquared(impact)<=16.0)player.damage(5.0);
   }
+  if(!award)return;
   int nearby=NearbyRewards.players(getCenter());
   List<ItemStack> drops=plugin.getAirdropManager().getLootFileService().rollRewards(nearby,1);
-  if(!drops.isEmpty())world.dropItemNaturally(impact.clone().add(0,0.5,0),drops.get(0));
+  if(!drops.isEmpty()){Item drop=world.dropItemNaturally(impact.clone().add(0,0.5,0),drops.get(0));drop.setGlowing(true);drop.setInvulnerable(true);}
  }
  private void createLoot(){
   int nearby=NearbyRewards.players(getCenter());int count=5*LootRuntime.perContainer(this);
@@ -173,9 +230,9 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   return true;
  }
  @Override public boolean isProtectedBlock(Location location){return super.isProtectedBlock(location)||(chestLocation!=null&&sameBlock(chestLocation,location));}
- public boolean isBreakable(Location location){return false;}
+ public boolean isBreakable(Location location){return phase==Phase.OPEN && location!=null && meteorBlocks.contains(blockKey(location)) && location.getBlock().getType()==Material.OBSIDIAN;}
  public void onBreakableBroken(Main plugin,Location location){}
- public boolean isMeteorArea(Location location){return chestLocation!=null&&location!=null&&location.getWorld()!=null&&location.getWorld().equals(chestLocation.getWorld())&&location.distanceSquared(chestLocation)<=16;}
+ public boolean isMeteorArea(Location location){return location!=null && meteorCenter!=null && location.getWorld()!=null && location.getWorld().equals(meteorCenter.getWorld()) && location.distanceSquared(meteorCenter)<=25;}
  private String statusLine(){
   if(phase==Phase.WAITING)return "&7Ожидание игроков";
   if(phase==Phase.FALLING)return "&cМетеорит падает";
@@ -188,25 +245,25 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   plugin.getHologramManager().updateHologram(getHologramName(),lines);
  }
  private final class Flight {
-  final Location start,end;final boolean large;final List<BlockDisplay> displays=new ArrayList<>();final List<Vector> offsets=new ArrayList<>();int age;
-  Flight(Location start,Location end,boolean large){
-   this.start=start;this.end=end;this.large=large;
+  final Location start,end;final boolean large,award;final List<BlockDisplay> displays=new ArrayList<>();final List<Vector> offsets=new ArrayList<>();int age;
+  Flight(Location start,Location end,boolean large,boolean award){
+   this.start=start;this.end=end;this.large=large;this.award=award;
    World world=start.getWorld();if(world==null)return;
-   int radius=large?2:1;
+   int radius=large?RADIUS:1;
    try { for(int x=-radius;x<=radius;x++)for(int y=-radius;y<=radius;y++)for(int z=-radius;z<=radius;z++){
-    if(x*x+y*y+z*z>radius*radius+1)continue;
+    if(x*x+y*y+z*z>radius*radius+(large?0:1))continue;
     if(!large && x*x+y*y+z*z>1)continue;
-    Vector offset=new Vector(x,y,z);Material material=ThreadLocalRandom.current().nextInt(4)==0?Material.MAGMA_BLOCK:Material.BLACKSTONE;
-    BlockDisplay display=world.spawn(start.clone().add(offset),BlockDisplay.class,d->{d.setBlock(material.createBlockData());d.setPersistent(false);d.setInterpolationDuration(2);d.setTeleportDuration(2);});
+    Vector offset=new Vector(x,y,z);Material material=large?Material.MAGMA_BLOCK:(ThreadLocalRandom.current().nextInt(3)==0?Material.MAGMA_BLOCK:Material.BLACKSTONE);
+    BlockDisplay display=world.spawn(start.clone().add(offset),BlockDisplay.class,d->{d.setBlock(material.createBlockData());d.setPersistent(false);d.setInterpolationDuration(4);d.setTeleportDuration(4);});
     offsets.add(offset);displays.add(display);
    }} catch(RuntimeException ex){remove();throw ex;}
   }
   boolean advance(){
-   age++;int duration=large?40:30;double t=Math.min(1.0,age/(double)duration);double progress=t*t;
-   if(age%2==0||age>=duration){
+   age++;int duration=large?90:65;double t=Math.min(1.0,age/(double)duration);double progress=t*t*(3-2*t);
+   if(age%4==0||age>=duration){
     Location loc=start.clone().add(end.toVector().subtract(start.toVector()).multiply(progress));
     for(int i=0;i<displays.size();i++)displays.get(i).teleport(loc.clone().add(offsets.get(i)));
-    if(age%6==0&&loc.getWorld()!=null)loc.getWorld().spawnParticle(Particle.SMOKE,loc,large?3:1,0.25,0.25,0.25,0.01);
+    if(age%8==0&&loc.getWorld()!=null)loc.getWorld().spawnParticle(Particle.SMOKE,loc,large?3:1,0.25,0.25,0.25,0.01);
    }
    return age>=duration;
   }
