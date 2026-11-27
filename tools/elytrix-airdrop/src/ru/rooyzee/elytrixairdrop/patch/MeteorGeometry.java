@@ -6,6 +6,8 @@ public final class MeteorGeometry {
  private MeteorGeometry(){}
  /** Bottom is two blocks below the surface: three intersecting layers. */
  public static int centerAboveSurface(){return RADIUS-2;}
+ /** Text starts above the highest meteor block, even if the landing position shifts. */
+ public static double hologramAboveCenter(){return RADIUS+2.0;}
  public static boolean contains(int x,int y,int z){
   int d=x*x+y*y+z*z;
   if(d>RADIUS*RADIUS)return false;

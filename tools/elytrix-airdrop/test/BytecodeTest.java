@@ -36,6 +36,18 @@ public class BytecodeTest implements Opcodes {
    for(MethodNode m:fire.methods)if(m.name.equals("animate"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).name.equals("shatter"))shatter=true;
    for(MethodNode m:flight.methods)if(m.name.equals("shatter"))for(AbstractInsnNode i:m.instructions)if(i instanceof TypeInsnNode && ((TypeInsnNode)i).desc.equals(BASE+"airdrops/types/ActiveFireAirdrop$Debris"))transfers=true;
    if(!shatter||!transfers)throw new AssertionError("meteor displays must shatter into temporary debris");
+   ClassNode holo=read(jar,BASE+"managers/HologramManager");boolean noBackground=false,transparent=false,namedSky=false;
+   for(MethodNode m:holo.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;
+    if(call.name.equals("setDefaultBackground"))noBackground=true;if(call.name.equals("setBackgroundColor"))transparent=true;
+    if(call.owner.startsWith("eu/decentsoftware/"))throw new AssertionError("unexpected DecentHolograms API dependency");
+   }
+   ClassNode skyClass=read(jar,BASE+"airdrops/types/ActiveSkyAirdrop");
+   for(MethodNode m:skyClass.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;
+    if(call.owner.equals(BASE+"managers/HologramManager")&&call.name.equals("createSky"))namedSky=true;
+    if(call.owner.equals("eu/decentsoftware/holograms/api/DHAPI"))throw new AssertionError("sky still creates old holograms");
+   }
+   boolean moved=false;for(MethodNode m:fire.methods)if(m.name.equals("onStart"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).name.equals("moveHologram"))moved=true;
+   if(!noBackground||!transparent||!namedSky||!moved)throw new AssertionError("transparent holograms, sky creation or fire positioning missing");
    ClassNode protection=read(jar,BASE+"listeners/ProtectionListener");int bypass=0;
    for(MethodNode m:protection.methods)if(m.name.equals("onTeleport")||m.name.equals("onPearlThrow"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/SkyMechanics") && ((MethodInsnNode)i).name.equals("skyActive"))bypass++;
    if(bypass!=2)throw new AssertionError("sky teleport hooks "+bypass);

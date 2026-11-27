@@ -9,7 +9,7 @@ public class PresetBytecodeTest {
   String base="ru/rooyzee/elytrixairdrop/";
   try(ZipFile output=new ZipFile(args[0]);ZipFile items=new ZipFile(args[1])){
    String yaml=new String(output.getInputStream(output.getEntry("plugin.yml")).readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
-   if(!yaml.contains("airdroplootpreset:")||!yaml.contains("ElytrixItem")||!yaml.contains("permission: elytrixairdrop.admin"))throw new AssertionError("descriptor");
+   if(!yaml.contains("api-version: '1.21'")||!yaml.contains("airdroplootpreset:")||!yaml.contains("ElytrixItem")||!yaml.contains("permission: elytrixairdrop.admin"))throw new AssertionError("descriptor");
    ClassNode main=read(output,base+"Main");boolean hook=false;
    for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(base+"patch/LootPreset") && ((MethodInsnNode)i).name.equals("install"))hook=true;
    if(!hook)throw new AssertionError("preset install hook");

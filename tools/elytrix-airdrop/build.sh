@@ -20,8 +20,11 @@ cp -R "$tmp/compiled/ru" "$tmp/classes/"
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.SkyMechanicsTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.FireScheduleTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.ReopenGuardTest
+"$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.HologramTextTest
 sed -i 's/^version: 1.0.0/version: 1.0.0-test-elytrix/' "$tmp/classes/plugin.yml"
 "$JAVA" -cp "$tmp/tests:$ASM_CP" PatchPluginYaml "$tmp/classes/plugin.yml"
+# Fresh installs expose an opt-out; existing configs are never edited.
+printf '\n# Set true to use your airdrops.*.hologram lines for main event text.\nholograms:\n  use-custom-lines: false\n' >> "$tmp/classes/config.yml"
 mkdir -p "$(dirname "$OUTPUT_JAR")"
 (cd "$tmp/classes" && zip -q -r "$tmp/output.jar" .)
 unzip -t "$tmp/output.jar" | tail -1

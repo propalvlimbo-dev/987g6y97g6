@@ -56,7 +56,9 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
 
  public ActiveFireAirdrop(Location center,String region,String hologram,Map<Location,SchematicManager.BlockData> backup,long endTime){super(Airdrop.FIRE,center,region,hologram,backup,endTime);}
  @Override public void onStart(Main plugin,ConfigurationSection config){
-  this.plugin=plugin;findSurface();findMeteorSpace();updateHologram(config);
+  this.plugin=plugin;findSurface();findMeteorSpace();
+  if(meteorCenter!=null)plugin.getHologramManager().moveHologram(getHologramName(),meteorCenter.clone().add(0.5,MeteorGeometry.hologramAboveCenter(),0.5));
+  updateHologram(config);
   if(centerLanding==null || meteorCenter==null){plugin.getLogger().severe("Fire airdrop: no safe air space for the meteor above the schematic");Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
   animationTask=Bukkit.getScheduler().runTaskTimer(plugin,this::animate,1L,1L);
  }
@@ -305,8 +307,9 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   if(phase==Phase.WAITING)return "&7Ожидание игроков";
   if(phase==Phase.FALLING)return "&cМетеорит падает";
   if(phase==Phase.COOLING){long s=Math.max(0,(unlockAt-System.currentTimeMillis()+999)/1000);return "&fОстывание: &#F8BEFB"+(s/60)+"м "+(s%60)+"с";}
-  return looted?"&7Лут забран":"&aСундук открыт";
+  return looted?"&7Лут забран":"&aРазбейте обсидиан — сундук внутри";
  }
+ public String hologramPhase(){return phase.name();}
  private void updateHologram(ConfigurationSection config){
   if(config==null)return;List<String> lines=new ArrayList<>();
   for(String line:config.getStringList("hologram"))lines.add(line.replace("%status%",statusLine()));

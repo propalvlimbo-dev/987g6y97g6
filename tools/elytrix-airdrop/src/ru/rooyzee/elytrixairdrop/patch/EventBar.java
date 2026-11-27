@@ -37,7 +37,7 @@ public final class EventBar implements Listener {
   String action=ColorUtil.colorize("&#F8BEFBАирдроп &8» &fИгроки: &#F8BEFB"+nearby+" &8│ &fПотенциал лута: &#F8BEFB"+grade);
   if(loc.getWorld()!=null)for(Player p:loc.getWorld().getPlayers())if(p.getGameMode()!=org.bukkit.GameMode.SPECTATOR && p.getLocation().distanceSquared(loc)<=400.0)p.spigot().sendMessage(ChatMessageType.ACTION_BAR,TextComponent.fromLegacyText(action));
  }
- static String stage(ActiveAirdrop a){
+ public static String stage(ActiveAirdrop a){
   try{
    String type=a.getType().getId();
    if(type.equals("peaceful")){

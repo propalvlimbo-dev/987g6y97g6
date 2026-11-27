@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 15) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 16) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -45,6 +45,15 @@ public class Patch implements Opcodes {
           if(!(loc instanceof VarInsnNode) || loc.getOpcode()!=ALOAD || ((VarInsnNode)loc).var!=6)throw new IllegalStateException("placement pattern");
           InsnList x=new InsnList(); x.add(new VarInsnNode(ALOAD,1)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/EventPlacement","adjust","(Lorg/bukkit/Location;L"+base+"airdrops/Airdrop;)Lorg/bukkit/Location;",false)); x.add(new InsnNode(DUP)); x.add(new VarInsnNode(ASTORE,6));
           m.instructions.insert(loc,x);hooks++;break;
+        }
+      }
+      if(name.endsWith("ActiveSkyAirdrop")) {
+        for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext())if(n instanceof MethodInsnNode){
+          MethodInsnNode call=(MethodInsnNode)n;
+          if(call.owner.equals("eu/decentsoftware/holograms/api/DHAPI") && call.name.equals("createHologram") && call.desc.equals("(Ljava/lang/String;Lorg/bukkit/Location;Ljava/util/List;)Leu/decentsoftware/holograms/api/holograms/Hologram;")){
+            AbstractInsnNode pop=nextOp(n);if(pop==null||pop.getOpcode()!=POP)throw new IllegalStateException("sky hologram create pattern");
+            call.owner=base+"managers/HologramManager";call.name="createSky";call.desc="(Ljava/lang/String;Lorg/bukkit/Location;Ljava/util/List;)V";m.instructions.remove(pop);hooks++;
+          }
         }
       }
       if(name.endsWith("ActivePeacefulAirdrop") && m.name.equals("onStart")) {
