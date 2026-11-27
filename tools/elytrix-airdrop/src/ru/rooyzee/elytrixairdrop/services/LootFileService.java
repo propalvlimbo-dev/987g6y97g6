@@ -109,6 +109,34 @@ public class LootFileService {
             return false;
         }
     }
+    /** Existing legacy files also count: never replace or silently bypass them. */
+    public boolean hasAnyLootFiles() {
+        if (new File(folder, "common.yml").exists()) return true;
+        for (String id : OLD_IDS) if (new File(folder, id + ".yml").exists()) return true;
+        return false;
+    }
+    /** Write all four pages once; preserve a uniquely named backup first. */
+    public String installPreset(List<List<ItemStack>> preset) throws IOException {
+        if (migrationBlocked || preset == null || preset.size() != PAGES) throw new IOException("Лут недоступен или пресет некорректен");
+        for (List<ItemStack> page : preset) if (page == null || page.isEmpty() || page.size() > CAPACITY) throw new IOException("Некорректная страница пресета");
+        File target = new File(folder, "common.yml");
+        File backup = null;
+        if (target.exists()) {
+            backup = new File(folder, "common-before-preset-" + java.util.UUID.randomUUID() + ".yml");
+            Files.copy(target.toPath(), backup.toPath());
+        }
+        Map<Integer, List<ItemStack>> old = new LinkedHashMap<>();
+        for (int i = 1; i <= PAGES; i++) old.put(i, copy(pages.get(i)));
+        boolean saved = false;
+        try {
+            for (int i = 1; i <= PAGES; i++) pages.put(i, copy(preset.get(i - 1)));
+            saved = savePages();
+            if (!saved) throw new IOException("Не удалось сохранить common.yml");
+        } finally {
+            if (!saved) pages.putAll(old);
+        }
+        return backup == null ? null : backup.getName();
+    }
     public boolean isReadOnly() { return migrationBlocked; }
     public void loadType(String id) { loadAll(); }
     public void saveType(String id, Map<Integer, List<ItemStack>> data) {

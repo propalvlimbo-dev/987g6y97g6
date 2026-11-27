@@ -20,8 +20,10 @@ cp -R "$tmp/compiled/ru" "$tmp/classes/"
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.SkyMechanicsTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.FireScheduleTest
 sed -i 's/^version: 1.0.0/version: 1.0.0-test-elytrix/' "$tmp/classes/plugin.yml"
+"$JAVA" -cp "$tmp/tests:$ASM_CP" PatchPluginYaml "$tmp/classes/plugin.yml"
 mkdir -p "$(dirname "$OUTPUT_JAR")"
 (cd "$tmp/classes" && zip -q -r "$tmp/output.jar" .)
 unzip -t "$tmp/output.jar" | tail -1
 "$JAVA" -cp "$tmp/tests:$ASM_CP" BytecodeTest "$tmp/output.jar"
+if [[ -n "${ITEM_JAR:-}" ]]; then "$JAVA" -cp "$tmp/tests:$ASM_CP" PresetBytecodeTest "$tmp/output.jar" "$ITEM_JAR"; fi
 mv "$tmp/output.jar" "$OUTPUT_JAR"
