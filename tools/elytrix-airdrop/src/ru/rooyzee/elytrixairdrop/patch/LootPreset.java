@@ -58,30 +58,34 @@ public final class LootPreset implements CommandExecutor {
   Class<?> iface=Class.forName("ru.rooyzee.elytrixitem.item.CustomItem",true,itemPlugin.getClass().getClassLoader());
   Method make=iface.getMethod("createItem"),stackable=iface.getMethod("isStackable");
   List<List<ItemStack>> p=new ArrayList<>();for(int i=0;i<4;i++)p.add(new ArrayList<>());
-  // Page 1: useful consumables, resources and basic equipment.
-  add(p,1,Material.COOKED_BEEF,32);add(p,1,Material.GOLDEN_CARROT,24);add(p,1,Material.GOLDEN_APPLE,3);
-  add(p,1,Material.ENDER_PEARL,4);add(p,1,Material.EXPERIENCE_BOTTLE,24);add(p,1,Material.ARROW,32);
-  add(p,1,Material.SHIELD,1);add(p,1,Material.COBWEB,8);add(p,1,Material.OBSIDIAN,12);add(p,1,Material.IRON_INGOT,24);
-  add(p,1,Material.GOLD_INGOT,16);add(p,1,Material.DIAMOND,4);add(p,1,Material.FIREWORK_ROCKET,24);
-  add(p,1,Material.IRON_HELMET,1);add(p,1,Material.IRON_CHESTPLATE,1);add(p,1,Material.IRON_LEGGINGS,1);add(p,1,Material.IRON_BOOTS,1);
-  potion(p,1,PotionType.LONG_FIRE_RESISTANCE,false);potion(p,1,PotionType.LONG_SWIFTNESS,false);potion(p,1,PotionType.LONG_STRENGTH,false);
-  potion(p,1,PotionType.STRONG_HEALING,true);potion(p,1,PotionType.LONG_NIGHT_VISION,false);potion(p,1,PotionType.LONG_WATER_BREATHING,false);
+  // Page 1: PvP-ready diamond Protection IV, not starter iron gear.
+  armor(p,1,Material.DIAMOND_HELMET,Material.DIAMOND_CHESTPLATE,Material.DIAMOND_LEGGINGS,Material.DIAMOND_BOOTS,false);
+  gear(p,1,Material.DIAMOND_SWORD,Enchantment.SHARPNESS,5,Enchantment.UNBREAKING,3);
+  gear(p,1,Material.DIAMOND_AXE,Enchantment.SHARPNESS,5,Enchantment.UNBREAKING,3);
+  gear(p,1,Material.DIAMOND_PICKAXE,Enchantment.EFFICIENCY,5,Enchantment.UNBREAKING,3);
+  gear(p,1,Material.BOW,Enchantment.POWER,5,Enchantment.UNBREAKING,3);
+  add(p,1,Material.TOTEM_OF_UNDYING,1);add(p,1,Material.GOLDEN_APPLE,12);add(p,1,Material.ENDER_PEARL,12);
+  add(p,1,Material.EXPERIENCE_BOTTLE,48);add(p,1,Material.END_CRYSTAL,12);add(p,1,Material.OBSIDIAN,32);
+  add(p,1,Material.COBWEB,16);add(p,1,Material.GOLDEN_CARROT,32);add(p,1,Material.DIAMOND,12);add(p,1,Material.FIREWORK_ROCKET,32);
+  potion(p,1,PotionType.LONG_FIRE_RESISTANCE,false);potion(p,1,PotionType.STRONG_SWIFTNESS,false);potion(p,1,PotionType.STRONG_STRENGTH,false);
+  potion(p,1,PotionType.STRONG_HEALING,true);potion(p,1,PotionType.STRONG_REGENERATION,false);potion(p,1,PotionType.LONG_INVISIBILITY,false);
   custom(p,1,get,registry,make,stackable,"anti_pearl",1);custom(p,1,get,registry,make,stackable,"explosive_trap",1);
-  // Page 2: reliable diamond gear and useful PvP consumables.
-  armor(p,2,3);gear(p,2,Material.DIAMOND_SWORD,Enchantment.SHARPNESS,4,Enchantment.UNBREAKING,3);
-  gear(p,2,Material.DIAMOND_AXE,Enchantment.SHARPNESS,4,Enchantment.UNBREAKING,3);
-  gear(p,2,Material.DIAMOND_PICKAXE,Enchantment.EFFICIENCY,4,Enchantment.UNBREAKING,3);
-  gear(p,2,Material.BOW,Enchantment.POWER,4,Enchantment.UNBREAKING,3);
-  add(p,2,Material.TOTEM_OF_UNDYING,1);add(p,2,Material.GOLDEN_APPLE,8);add(p,2,Material.ENDER_PEARL,8);
-  add(p,2,Material.DIAMOND,10);add(p,2,Material.NETHERITE_SCRAP,2);add(p,2,Material.END_CRYSTAL,8);
+  // Page 2: upgraded Protection IV armour, fighting gear and custom potions.
+  armor(p,2,Material.DIAMOND_HELMET,Material.DIAMOND_CHESTPLATE,Material.DIAMOND_LEGGINGS,Material.DIAMOND_BOOTS,true);
+  gear(p,2,Material.DIAMOND_SWORD,Enchantment.SHARPNESS,5,Enchantment.FIRE_ASPECT,2);
+  gear(p,2,Material.DIAMOND_PICKAXE,Enchantment.EFFICIENCY,5,Enchantment.FORTUNE,3);
+  gear(p,2,Material.BOW,Enchantment.POWER,5,Enchantment.FLAME,1);
+  add(p,2,Material.TOTEM_OF_UNDYING,1);add(p,2,Material.GOLDEN_APPLE,24);add(p,2,Material.ENDER_PEARL,16);
+  add(p,2,Material.DIAMOND,24);add(p,2,Material.NETHERITE_SCRAP,4);add(p,2,Material.END_CRYSTAL,24);
   potion(p,2,PotionType.STRONG_SWIFTNESS,false);potion(p,2,PotionType.STRONG_STRENGTH,false);potion(p,2,PotionType.STRONG_REGENERATION,false);
   potion(p,2,PotionType.STRONG_HEALING,true);potion(p,2,PotionType.LONG_INVISIBILITY,false);
   for(String id:new String[]{"potion_healt","potion_lightness","potion_voina","potion_disappearances","potion_sportsmena","potion_salvation"})custom(p,2,get,registry,make,stackable,id,1);
-  // Page 3: protection IV, stronger gear and custom Elytrix consumables.
-  armor(p,3,4);gear(p,3,Material.DIAMOND_SWORD,Enchantment.SHARPNESS,5,Enchantment.UNBREAKING,3);
-  gear(p,3,Material.DIAMOND_PICKAXE,Enchantment.EFFICIENCY,5,Enchantment.FORTUNE,3);
-  gear(p,3,Material.BOW,Enchantment.POWER,5,Enchantment.UNBREAKING,3);
-  add(p,3,Material.NETHERITE_INGOT,1);add(p,3,Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE,1);add(p,3,Material.ENCHANTED_GOLDEN_APPLE,1);
+  // Page 3: netherite Protection IV and unusual Elytrix ammunition and items.
+  armor(p,3,Material.NETHERITE_HELMET,Material.NETHERITE_CHESTPLATE,Material.NETHERITE_LEGGINGS,Material.NETHERITE_BOOTS,true);
+  gear(p,3,Material.NETHERITE_SWORD,Enchantment.SHARPNESS,5,Enchantment.UNBREAKING,3);
+  gear(p,3,Material.NETHERITE_PICKAXE,Enchantment.EFFICIENCY,5,Enchantment.FORTUNE,3);
+  gear(p,3,Material.BOW,Enchantment.POWER,5,Enchantment.INFINITY,1);
+  add(p,3,Material.NETHERITE_INGOT,2);add(p,3,Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE,1);add(p,3,Material.ENCHANTED_GOLDEN_APPLE,1);
   for(String id:new String[]{"arrow1","arrow2","arrow3","arrow5","arrow_levit"})custom(p,3,get,registry,make,stackable,id,8);
   for(String id:new String[]{"totem1","totem2","totem3","shar1","shar2"})custom(p,3,get,registry,make,stackable,id,1);
   // Page 4: valuable permanent shop items are deliberately in the rarest tier.
@@ -93,7 +97,14 @@ public final class LootPreset implements CommandExecutor {
  }
  private static void add(List<List<ItemStack>> p,int page,Material type,int amount){ItemStack item=new ItemStack(type);if(amount<1||amount>item.getMaxStackSize())throw new IllegalStateException("Invalid stack: "+type);item.setAmount(amount);p.get(page-1).add(item);}
  private static void gear(List<List<ItemStack>> p,int page,Material type,Enchantment first,int a,Enchantment second,int b){ItemStack item=new ItemStack(type);item.addEnchantment(first,a);item.addEnchantment(second,b);p.get(page-1).add(item);}
- private static void armor(List<List<ItemStack>> p,int page,int protection){for(Material m:new Material[]{Material.DIAMOND_HELMET,Material.DIAMOND_CHESTPLATE,Material.DIAMOND_LEGGINGS,Material.DIAMOND_BOOTS})gear(p,page,m,Enchantment.PROTECTION,protection,Enchantment.UNBREAKING,3);}
+ private static void armor(List<List<ItemStack>> p,int page,Material helmet,Material chest,Material leggings,Material boots,boolean mending){
+  for(Material m:new Material[]{helmet,chest,leggings,boots}){
+   ItemStack item=new ItemStack(m);item.addEnchantment(Enchantment.PROTECTION,4);item.addEnchantment(Enchantment.UNBREAKING,3);
+   if(mending)item.addEnchantment(Enchantment.MENDING,1);
+   if(m==boots)item.addEnchantment(Enchantment.FEATHER_FALLING,4);
+   p.get(page-1).add(item);
+  }
+ }
  private static void potion(List<List<ItemStack>> p,int page,PotionType type,boolean splash){ItemStack item=new ItemStack(splash?Material.SPLASH_POTION:Material.POTION);PotionMeta meta=(PotionMeta)item.getItemMeta();meta.setBasePotionType(type);item.setItemMeta(meta);p.get(page-1).add(item);}
  private static void custom(List<List<ItemStack>> p,int page,Method get,Object registry,Method make,Method stackable,String id,int count)throws Exception{
   Object entry=get.invoke(registry,id);if(entry==null)throw new IllegalStateException("ElytrixItem: неизвестный предмет "+id);

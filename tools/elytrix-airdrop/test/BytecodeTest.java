@@ -43,7 +43,17 @@ public class BytecodeTest implements Opcodes {
    for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.owner.equals(BASE+"patch/PeacefulChest")&&a.name.equals("install"))chest=true;if(a.owner.equals(BASE+"patch/SkyMechanics")&&a.name.equals("install"))sky=true;}
    if(!chest||!sky)throw new AssertionError("mechanics installation missing");
    ClassNode safeChest=read(jar,BASE+"patch/PeacefulChest");
-   for(MethodNode m:safeChest.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("openInventory"))throw new AssertionError("unsafe reopen remains");}
+   boolean scheduled=false,reopened=false,guarded=false,reasonCheck=false;
+   for(MethodNode m:safeChest.methods)for(AbstractInsnNode i:m.instructions){
+    if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;
+     if(m.name.equals("close")&&a.name.equals("openInventory"))throw new AssertionError("synchronous reopen in close handler");
+     if(m.name.equals("close")&&a.name.equals("runTaskLater"))scheduled=true;
+     if(m.name.equals("close")&&a.name.equals("getReason"))reasonCheck=true;
+     if(m.name.equals("reopen")&&a.name.equals("openInventory"))reopened=true;
+     if(m.name.equals("close")&&a.owner.equals(BASE+"patch/ReopenGuard")&&a.name.equals("queue"))guarded=true;
+    }
+   }
+   if(!scheduled||!reopened||!guarded||!reasonCheck)throw new AssertionError("guarded deferred peaceful reopen missing");
    ClassNode skyPatch=read(jar,BASE+"patch/SkyMechanics");
    for(MethodNode m:skyPatch.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("setX") || a.name.equals("setZ") || a.name.equals("runTaskLater"))throw new AssertionError("sideways wind or delayed push remains");}
    ClassNode manager=read(jar,BASE+"managers/AirdropManager");boolean adjust=false;
@@ -61,7 +71,7 @@ public class BytecodeTest implements Opcodes {
    }
    if(!waveSize||limitChanges!=2)throw new AssertionError("peaceful 1-2 wave or limit missing");
   }
-  System.out.println("Bytecode: placement, masked inventories and draw-without-replacement sky teleport hooks, no chest reopen, sideways wind or delayed push OK");
+  System.out.println("Bytecode: placement, masked inventories and draw-without-replacement sky teleport hooks, guarded deferred chest reopen, no sideways wind or delayed push OK");
  }
  static ClassNode read(ZipFile jar,String name)throws Exception {ClassNode node=new ClassNode();try(InputStream in=jar.getInputStream(jar.getEntry(name+".class"))){new ClassReader(in).accept(node,0);}return node;}
 }
