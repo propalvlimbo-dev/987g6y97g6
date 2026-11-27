@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 16) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 17) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -60,7 +60,8 @@ public class Patch implements Opcodes {
         AbstractInsnNode start=null;
         for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) if(n instanceof TypeInsnNode && n.getOpcode()==NEW && ((TypeInsnNode)n).desc.equals("java/util/ArrayList")) {start=n;break;}
         if(start==null) throw new IllegalStateException("peaceful onStart pool not found");
-        m.instructions.insertBefore(start,new InsnNode(RETURN));
+        InsnList move=new InsnList();move.add(new VarInsnNode(ALOAD,1));move.add(new VarInsnNode(ALOAD,0));move.add(new VarInsnNode(ALOAD,0));move.add(new FieldInsnNode(GETFIELD,name,"chestLoc","Lorg/bukkit/Location;"));move.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulHologram","place","(L"+base+"Main;L"+base+"airdrops/ActiveAirdrop;Lorg/bukkit/Location;)V",false));move.add(new InsnNode(RETURN));
+        m.instructions.insertBefore(start,move);hooks++;
         for(AbstractInsnNode n=start;n!=null;) {AbstractInsnNode next=n.getNext();m.instructions.remove(n);n=next;}
         m.localVariables=null; hooks++;
       }
