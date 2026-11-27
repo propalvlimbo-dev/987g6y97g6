@@ -76,6 +76,14 @@ public class BytecodeTest implements Opcodes {
    ClassNode peace=read(jar,BASE+"airdrops/types/ActivePeacefulAirdrop");boolean generate=false,tracked=false;
    for(MethodNode m:peace.methods)if(m.name.equals("openLoot"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;if(call.name.equals("preparePeaceful"))generate=true;if(call.name.equals("track"))tracked=true;}
    if(!generate||!tracked)throw new AssertionError("peaceful hooks missing");
+   int timeoutHooks=0; for(MethodNode m:manager.methods)if(m.name.startsWith("lambda$startScheduler$"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/PeacefulMechanics") && ((MethodInsnNode)i).name.equals("endTime"))timeoutHooks++;
+   boolean life=false,oldLaunch=false,grace=false,installed=false;
+   for(MethodNode m:peace.methods){for(AbstractInsnNode i:m.instructions){
+    if(m.name.equals("onTick") && i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("lifetime") && a.owner.equals(BASE+"patch/PeacefulMechanics"))life=true;if(a.owner.equals(BASE+"services/LaunchService") && a.name.equals("launch"))oldLaunch=true;}
+    if(m.name.equals("handleLootClick") && i instanceof LdcInsnNode && Long.valueOf(300L).equals(((LdcInsnNode)i).cst))grace=true;
+   }}
+   for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/PeacefulMechanics") && ((MethodInsnNode)i).name.equals("install"))installed=true;
+   if(timeoutHooks!=2 || !life || oldLaunch || !grace || !installed)throw new AssertionError("peaceful timed launch or grace hooks missing");
    int limitChanges=0;boolean waveSize=false;
    for(MethodNode m:peace.methods)if(m.name.equals("spawnWave")||m.name.equals("handleLootClick"))for(AbstractInsnNode i:m.instructions){
     if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/PeacefulWave") && ((MethodInsnNode)i).name.equals("size"))waveSize=true;

@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 17) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 22) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -20,7 +20,7 @@ public class Patch implements Opcodes {
     for(MethodNode m:c.methods) {
       if(name.equals(base+"Main") && m.name.equals("onEnable")) {
         for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) if(n.getOpcode()==RETURN) {
-          InsnList x=new InsnList(); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/EventBar","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,runtime,"install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/AdminControls","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulChest","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/SkyMechanics","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/LootPreset","install","(L"+base+"Main;)V",false)); m.instructions.insertBefore(n,x); hooks++; break;
+          InsnList x=new InsnList(); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/EventBar","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,runtime,"install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/AdminControls","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulChest","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/SkyMechanics","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulMechanics","install","(L"+base+"Main;)V",false)); hooks++; x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/LootPreset","install","(L"+base+"Main;)V",false)); m.instructions.insertBefore(n,x); hooks++; break;
         }
       }
       if(name.equals(base+"listeners/ProtectionListener") && (m.name.equals("onTeleport") || m.name.equals("onPearlThrow"))) {
@@ -55,6 +55,28 @@ public class Patch implements Opcodes {
             call.owner=base+"managers/HologramManager";call.name="createSky";call.desc="(Ljava/lang/String;Lorg/bukkit/Location;Ljava/util/List;)V";m.instructions.remove(pop);hooks++;
           }
         }
+      }
+      if(name.equals(base+"managers/AirdropManager") && m.name.startsWith("lambda$startScheduler$")) {
+        int count=0;
+        for(AbstractInsnNode n:m.instructions)if(n instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)n;
+          if(call.owner.equals(base+"airdrops/ActiveAirdrop") && call.name.equals("getEndTime") && call.desc.equals("()J")){
+            call.setOpcode(INVOKESTATIC);call.owner=base+"patch/PeacefulMechanics";call.name="endTime";call.desc="(L"+base+"airdrops/ActiveAirdrop;)J";count++;
+          }
+        }
+        if(count!=0){if(count!=2)throw new IllegalStateException("scheduler timeout count "+count);hooks++;}
+      }
+      if(name.endsWith("ActivePeacefulAirdrop") && m.name.equals("onTick")) {
+        for(AbstractInsnNode n=m.instructions.getFirst(),next;n!=null;n=next){
+          next=n.getNext();
+          if(n instanceof LdcInsnNode && Long.valueOf(900000L).equals(((LdcInsnNode)n).cst)){
+            m.instructions.insertBefore(n,new VarInsnNode(ALOAD,0));m.instructions.set(n,new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulMechanics","lifetime","(L"+base+"airdrops/ActiveAirdrop;)J",false));hooks++;
+          }else if(n instanceof MethodInsnNode && ((MethodInsnNode)n).owner.equals(base+"services/LaunchService") && ((MethodInsnNode)n).name.equals("launch")){
+            m.instructions.set(n,new InsnNode(POP));hooks++;
+          }
+        }
+      }
+      if(name.endsWith("ActivePeacefulAirdrop") && m.name.equals("handleLootClick")) {
+        for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext())if(n instanceof LdcInsnNode && Long.valueOf(100L).equals(((LdcInsnNode)n).cst)){((LdcInsnNode)n).cst=300L;hooks++;}
       }
       if(name.endsWith("ActivePeacefulAirdrop") && m.name.equals("onStart")) {
         AbstractInsnNode start=null;
