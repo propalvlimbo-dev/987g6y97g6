@@ -2,6 +2,7 @@ package ru.rooyzee.elytrixairdrop.patch;
 import java.util.*;
 public class HologramTextTest {
  public static void main(String[] args){
+  for(String type:new String[]{"fire","peaceful","sky"}){String title=HologramText.main(type,"stage","COOLING").get(0);if(!title.startsWith("&#F8BEFB&l")||!title.contains("АИРДРОП"))throw new AssertionError("pink bold title "+type);}
   String cool=String.join(" ",HologramText.main("fire","Остывание: 1м","COOLING"));
   String open=String.join(" ",HologramText.main("fire","Остыл","OPEN"));
   String looted=String.join(" ",HologramText.main("fire","Лут забран","OPEN"));

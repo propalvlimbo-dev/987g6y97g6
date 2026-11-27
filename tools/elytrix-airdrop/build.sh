@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # JAVA is a Java 21 runtime; ECJ and ASM_CP are Eclipse compiler / ASM jars.
-# API_CP is the target server's Bukkit/Leaf API and dependency jars.
+# API_CP is the target server's Bukkit/Leaf API and dependency jars, including JOML.
 : "${JAVA:?}" "${ECJ:?}" "${ASM_CP:?}" "${API_CP:?}" "${ORIGINAL_JAR:?}" "${OUTPUT_JAR:?}"
 root=$(cd "$(dirname "$0")" && pwd)
 expected=1ae338dae6e5ffb2ba819ecde808595f4500826f8b8b01f9e8262f1a0b493330
