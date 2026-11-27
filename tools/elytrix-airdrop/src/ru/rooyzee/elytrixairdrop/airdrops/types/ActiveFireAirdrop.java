@@ -108,27 +108,31 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  }
  private void findMeteorSpace(){
   if(centerLanding==null)return;
-  // Try the most central surface first. The sphere sinks two layers into that surface.
+  // Try the most central surface first. The sphere intersects three layers of that surface.
   List<Location> candidates=new ArrayList<>(surface);
   candidates.sort(Comparator.comparingDouble(loc->{double x=loc.getX()-getCenter().getBlockX(),z=loc.getZ()-getCenter().getBlockZ();return x*x+z*z;}));
   for(Location landing:candidates){
    double dx=landing.getX()-getCenter().getBlockX(),dz=landing.getZ()-getCenter().getBlockZ();
    if(dx*dx+dz*dz>144)break;
-   Location candidate=landing.clone().add(0,RADIUS-1,0).getBlock().getLocation();
+   Location candidate=landing.clone().add(0,MeteorGeometry.centerAboveSurface(),0).getBlock().getLocation();
    if(candidate.getBlockY()+RADIUS>=candidate.getWorld().getMaxHeight() || candidate.getBlockY()-RADIUS<candidate.getWorld().getMinHeight())continue;
    if(canPlaceMeteor(candidate,landing.getBlockY())){centerLanding=landing;meteorCenter=candidate;return;}
   }
  }
  private boolean canPlaceMeteor(Location center,int surfaceY){
+  int embeddedBlocks=0,belowSurface=0;
   for(int x=-RADIUS;x<=RADIUS;x++)for(int y=-RADIUS;y<=RADIUS;y++)for(int z=-RADIUS;z<=RADIUS;z++){
    if(!MeteorGeometry.contains(x,y,z))continue;
    Location loc=center.clone().add(x,y,z).getBlock().getLocation();Block block=loc.getBlock();
    if(block.getType().isAir())continue;
-   // Only replace known backed-up, solid blocks in the two upper impact layers.
+   // Only replace known backed-up, solid blocks in the three upper impact layers.
    // Never touch inventories or other tile entities, liquids, or blocks above the surface.
-   if(loc.getBlockY()>surfaceY || loc.getBlockY()<surfaceY-1 || !getBackup().containsKey(loc)
+   if(loc.getBlockY()>surfaceY || loc.getBlockY()<surfaceY-2 || !getBackup().containsKey(loc)
        || !block.getType().isSolid() || block.getState() instanceof TileState)return false;
+   embeddedBlocks++;if(loc.getBlockY()<surfaceY)belowSurface++;
   }
+  // A thin pillar or a hollow space is not a convincing embedded impact.
+  if(embeddedBlocks<8 || belowSurface<1)return false;
   Block anchor=centerLandingFor(center,surfaceY).getBlock();
   return anchor.getType().isSolid() && !(anchor.getState() instanceof TileState) && getBackup().containsKey(anchor.getLocation());
  }
@@ -169,9 +173,8 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   while(it.hasNext()){
    Flight f=it.next();if(!f.advance())continue;
    it.remove();
-   f.remove();
-   if(f.large)landMain(f.end);
-   else impactSmall(f.end,f.award);
+   if(f.large){f.remove();landMain(f.end);}
+   else {f.shatter();impactSmall(f.end,f.award);}
   }
  }
  private void landMain(Location impact){
@@ -205,10 +208,10 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private void carveImpact(List<Location> meteor){
   Set<Location> occupied=new HashSet<>(meteor);
   int surfaceY=centerLanding.getBlockY();
-  for(int dx=-5;dx<=5;dx++)for(int dz=-5;dz<=5;dz++){
-   int distance=dx*dx+dz*dz;if(distance>25)continue;
+  for(int dx=-6;dx<=6;dx++)for(int dz=-6;dz<=6;dz++){
+   int distance=dx*dx+dz*dz;if(distance<16||distance>36)continue;
    for(int depth=0;depth<=1;depth++){
-    if(depth==1&&distance>16)continue;
+    if(depth==1&&distance>25)continue;
     Location loc=centerLanding.clone().add(dx,-depth,dz).getBlock().getLocation();
     Block block=loc.getBlock();
     if(loc.getBlockY()!=surfaceY-depth || occupied.contains(loc) || !getBackup().containsKey(loc)
@@ -251,7 +254,8 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  }
  private void impactSmall(Location impact,boolean award){
   World world=impact.getWorld();if(world==null)return;
-  world.playSound(impact,Sound.BLOCK_ANVIL_LAND,0.45f,0.7f);
+  world.playSound(impact,Sound.ENTITY_GENERIC_EXPLODE,0.45f,1.25f);
+  world.spawnParticle(Particle.EXPLOSION,impact,1,0,0,0,0);
   world.spawnParticle(Particle.SMOKE,impact,5,0.4,0.2,0.4,0.02);
   spawnDebris(impact);
   for(Player player:world.getPlayers()){
@@ -329,6 +333,17 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
     if(age%8==0&&loc.getWorld()!=null)loc.getWorld().spawnParticle(Particle.SMOKE,loc,large?3:1,0.25,0.25,0.25,0.01);
    }
    return age>=duration;
+  }
+  void shatter(){
+   // Keep the actual meteor displays: every fragment retains its magma/blackstone appearance.
+   for(int i=0;i<displays.size();i++){
+    BlockDisplay display=displays.get(i);Vector offset=offsets.get(i);
+    Location position=end.clone().add(offset);display.setTeleportDuration(1);display.teleport(position);
+    double angle=ThreadLocalRandom.current().nextDouble(Math.PI*2);
+    double speed=ThreadLocalRandom.current().nextDouble(0.18,0.35);
+    debris.add(new Debris(display,position,new Vector(Math.cos(angle)*speed,ThreadLocalRandom.current().nextDouble(0.18,0.33),Math.sin(angle)*speed)));
+   }
+   displays.clear();offsets.clear();
   }
   void remove(){for(BlockDisplay d:displays)d.remove();displays.clear();}
  }

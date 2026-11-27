@@ -4,6 +4,8 @@ package ru.rooyzee.elytrixairdrop.patch;
 public final class MeteorGeometry {
  public static final int RADIUS=4;
  private MeteorGeometry(){}
+ /** Bottom is two blocks below the surface: three intersecting layers. */
+ public static int centerAboveSurface(){return RADIUS-2;}
  public static boolean contains(int x,int y,int z){
   int d=x*x+y*y+z*z;
   if(d>RADIUS*RADIUS)return false;

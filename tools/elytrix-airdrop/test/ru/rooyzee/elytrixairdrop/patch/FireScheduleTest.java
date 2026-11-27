@@ -16,6 +16,10 @@ public class FireScheduleTest {
   for(int i=0;i<100;i+=2){if(FireSchedule.carriesLoot(i,true)==FireSchedule.carriesLoot(i+1,true)||FireSchedule.carriesLoot(i,false)==FireSchedule.carriesLoot(i+1,false))throw new AssertionError("loot pairing");}
   int count=0;for(int x=-4;x<=4;x++)for(int y=-4;y<=4;y++)for(int z=-4;z<=4;z++)if(MeteorGeometry.contains(x,y,z)){count++;if(x*x+y*y+z*z>16)throw new AssertionError("not round");}
   if(count<200||count>=257||!MeteorGeometry.contains(0,-4,0)||!MeteorGeometry.contains(0,0,0)||MeteorGeometry.contains(4,4,4))throw new AssertionError("meteor geometry "+count);
+  int atSurface=0,below=0;
+  int center=MeteorGeometry.centerAboveSurface();
+  for(int x=-4;x<=4;x++)for(int z=-4;z<=4;z++){if(MeteorGeometry.contains(x,-center,z))atSurface++;if(MeteorGeometry.contains(x,-center-1,z))below++;}
+  if(center!=2 || center-MeteorGeometry.RADIUS!=-2 || atSurface<25 || below<8)throw new AssertionError("meteor must embed a broad base across three layers");
   double previous=0;for(int i=1;i<=35;i++){double p=MeteorGeometry.flightProgress(i,35),step=p-previous;if(i>1 && step<((2.0*i-3)/(35*35))-0.000001)throw new AssertionError("flight decelerates");previous=p;}if(previous!=1.0)throw new AssertionError("flight endpoint");
   for(int i=0;i<10000;i++){int wave=PeacefulWave.size();if(wave!=1 && wave!=2)throw new AssertionError("wave size");}
   System.out.println("Fire schedule and 1-2 item peaceful waves OK");

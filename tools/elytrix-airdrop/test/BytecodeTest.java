@@ -32,6 +32,10 @@ public class BytecodeTest implements Opcodes {
     }
    }
    if(!debrisHook||!crater||!guard||!fragmentSpawn||!fragmentCleanup||!damageValue)throw new AssertionError("impact visual, terrain guard or damage missing");
+   ClassNode flight=read(jar,BASE+"airdrops/types/ActiveFireAirdrop$Flight");boolean shatter=false,transfers=false;
+   for(MethodNode m:fire.methods)if(m.name.equals("animate"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).name.equals("shatter"))shatter=true;
+   for(MethodNode m:flight.methods)if(m.name.equals("shatter"))for(AbstractInsnNode i:m.instructions)if(i instanceof TypeInsnNode && ((TypeInsnNode)i).desc.equals(BASE+"airdrops/types/ActiveFireAirdrop$Debris"))transfers=true;
+   if(!shatter||!transfers)throw new AssertionError("meteor displays must shatter into temporary debris");
    ClassNode protection=read(jar,BASE+"listeners/ProtectionListener");int bypass=0;
    for(MethodNode m:protection.methods)if(m.name.equals("onTeleport")||m.name.equals("onPearlThrow"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/SkyMechanics") && ((MethodInsnNode)i).name.equals("skyActive"))bypass++;
    if(bypass!=2)throw new AssertionError("sky teleport hooks "+bypass);
