@@ -1,0 +1,1 @@
+package org.bukkit; import org.bukkit.block.data.BlockData; public enum Material { PURPLE_STAINED_GLASS,MAGENTA_STAINED_GLASS,AMETHYST_BLOCK,BLUE_STAINED_GLASS,PINK_STAINED_GLASS; public BlockData createBlockData(){return null;} }

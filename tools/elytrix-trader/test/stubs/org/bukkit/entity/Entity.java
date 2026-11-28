@@ -1,0 +1,1 @@
+package org.bukkit.entity; import org.bukkit.Location; public interface Entity {void remove(); boolean isValid(); void setPersistent(boolean v); void setInvulnerable(boolean v); boolean teleport(Location l);}

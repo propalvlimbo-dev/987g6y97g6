@@ -1,0 +1,1 @@
+package org.bukkit.entity; import org.bukkit.util.Transformation; public interface Display extends Entity {void setTransformation(Transformation t); void setInterpolationDuration(int ticks); void setTeleportDuration(int ticks);}
