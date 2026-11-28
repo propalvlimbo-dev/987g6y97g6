@@ -33,6 +33,15 @@ public class BytecodeTest implements Opcodes {
    }
    if(!debrisHook||!crater||!guard||!fragmentSpawn||!fragmentCleanup||!damageValue)throw new AssertionError("impact visual, terrain guard or damage missing");
    ClassNode flight=read(jar,BASE+"airdrops/types/ActiveFireAirdrop$Flight");boolean shatter=false,transfers=false;
+   boolean quickSmall=false,arenaStart=false,arenaStop=false,arenaLoot=false,emptyRelease=false;
+   for(MethodNode m:flight.methods)if(m.name.equals("advance"))for(AbstractInsnNode i:m.instructions)if(i instanceof IntInsnNode && i.getOpcode()==BIPUSH && ((IntInsnNode)i).operand==20)quickSmall=true;
+   for(MethodNode m:fire.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;
+    if(a.owner.equals(BASE+"patch/FireArena") && a.name.equals("start") && m.name.equals("onStart"))arenaStart=true;
+    if(a.owner.equals(BASE+"patch/FireArena") && a.name.equals("close")){
+     if(m.name.equals("onStop"))arenaStop=true;if(m.name.equals("handleLootClick"))arenaLoot=true;if(m.name.equals("createLoot"))emptyRelease=true;
+    }
+   }
+   if(!quickSmall||!arenaStart||!arenaStop||!arenaLoot||!emptyRelease)throw new AssertionError("fire arena lifecycle or accelerated small meteor missing");
    for(MethodNode m:fire.methods)if(m.name.equals("animate"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).name.equals("shatter"))shatter=true;
    for(MethodNode m:flight.methods)if(m.name.equals("shatter"))for(AbstractInsnNode i:m.instructions)if(i instanceof TypeInsnNode && ((TypeInsnNode)i).desc.equals(BASE+"airdrops/types/ActiveFireAirdrop$Debris"))transfers=true;
    if(!shatter||!transfers)throw new AssertionError("meteor displays must shatter into temporary debris");

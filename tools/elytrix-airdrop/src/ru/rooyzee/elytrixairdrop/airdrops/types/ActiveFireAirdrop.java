@@ -27,6 +27,7 @@ import ru.rooyzee.elytrixairdrop.airdrops.ActiveAirdrop;
 import ru.rooyzee.elytrixairdrop.airdrops.Airdrop;
 import ru.rooyzee.elytrixairdrop.managers.SchematicManager;
 import ru.rooyzee.elytrixairdrop.patch.FireSchedule;
+import ru.rooyzee.elytrixairdrop.patch.FireArena;
 import ru.rooyzee.elytrixairdrop.patch.MeteorGeometry;
 import ru.rooyzee.elytrixairdrop.patch.LootRuntime;
 import ru.rooyzee.elytrixairdrop.patch.NearbyRewards;
@@ -45,6 +46,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private final Map<UUID,Long> cooldowns=new HashMap<>();
  private Main plugin;
  private BukkitTask animationTask;
+ private FireArena arena;
  private Inventory loot;
  private Location centerLanding,meteorCenter,chestLocation;
  private long enteredAt,landedAt,unlockAt,lastSmallStart;
@@ -60,6 +62,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   if(meteorCenter!=null)plugin.getHologramManager().moveHologram(getHologramName(),meteorCenter.clone().add(0.5,MeteorGeometry.hologramAboveCenter(),0.5));
   updateHologram(config);
   if(centerLanding==null || meteorCenter==null){plugin.getLogger().severe("Fire airdrop: no safe air space for the meteor above the schematic");Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
+  arena=FireArena.start(plugin,this,surface);
   animationTask=Bukkit.getScheduler().runTaskTimer(plugin,this::animate,1L,1L);
  }
  @Override public void onTick(Main plugin,ConfigurationSection config){
@@ -86,6 +89,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   updateHologram(config);
  }
  @Override public void onStop(Main plugin,ConfigurationSection config){
+  if(arena!=null){arena.close();arena=null;}
   if(animationTask!=null){animationTask.cancel();animationTask=null;}
   for(Flight f:flights)f.remove();flights.clear();
   for(Debris d:debris)d.display.remove();debris.clear();
@@ -272,6 +276,11 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  private void createLoot(){
   int nearby=NearbyRewards.players(getCenter());int count=5*LootRuntime.perContainer(this);
   List<ItemStack> selected=plugin.getAirdropManager().getLootFileService().rollRewards(nearby,count);
+  if(selected.isEmpty()){
+   looted=true;if(arena!=null){arena.close();arena=null;}
+   plugin.getLogger().warning("Fire airdrop has no rewards: releasing players and ending event");
+   Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;
+  }
   loot=Bukkit.createInventory(null,54,ColorUtil.colorize("&f☁ &#F8BEFBАирдроп &7» &cОгненный"));
   LootRuntime.track(loot);List<Integer> slots=new ArrayList<>();for(int i=0;i<54;i++)slots.add(i);Collections.shuffle(slots);
   ItemStack mask=new ItemStack(Material.BLACK_DYE);ItemMeta meta=mask.getItemMeta();meta.setDisplayName(ColorUtil.colorize("&#F8BEFB???"));mask.setItemMeta(meta);
@@ -294,12 +303,13 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   for(ItemStack overflow:player.getInventory().addItem(item.clone()).values())player.getWorld().dropItemNaturally(player.getLocation(),overflow);
   player.playSound(player.getLocation(),Sound.ENTITY_ITEM_PICKUP,0.5f,1.4f);
   if(rewards.isEmpty()){
-   looted=true;for(org.bukkit.entity.HumanEntity viewer:new ArrayList<>(loot.getViewers()))viewer.closeInventory();
+   looted=true;if(arena!=null){arena.close();arena=null;}for(org.bukkit.entity.HumanEntity viewer:new ArrayList<>(loot.getViewers()))viewer.closeInventory();
    Bukkit.getScheduler().runTaskLater(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(true);},200L);
   }
   return true;
  }
  @Override public boolean isProtectedBlock(Location location){return super.isProtectedBlock(location)||(chestLocation!=null&&sameBlock(chestLocation,location));}
+ public boolean isLooted(){return looted;}
  public boolean isBreakable(Location location){return phase==Phase.OPEN && location!=null && meteorBlocks.contains(blockKey(location)) && location.getBlock().getType()==Material.OBSIDIAN;}
  public void onBreakableBroken(Main plugin,Location location){}
  public boolean isMeteorArea(Location location){return location!=null && meteorCenter!=null && location.getWorld()!=null && location.getWorld().equals(meteorCenter.getWorld()) && location.distanceSquared(meteorCenter)<=25;}
@@ -329,7 +339,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
    }} catch(RuntimeException ex){remove();throw ex;}
   }
   boolean advance(){
-   age++;int duration=large?35:50;double progress=MeteorGeometry.flightProgress(age,duration);
+   age++;int duration=large?35:20;double progress=MeteorGeometry.flightProgress(age,duration);
    if(age%2==0||age>=duration){
     Location loc=start.clone().add(end.toVector().subtract(start.toVector()).multiply(progress));
     for(int i=0;i<displays.size();i++)displays.get(i).teleport(loc.clone().add(offsets.get(i)));
