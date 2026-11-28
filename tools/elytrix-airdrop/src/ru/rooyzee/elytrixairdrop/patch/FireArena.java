@@ -26,9 +26,9 @@ public final class FireArena implements Listener {
  private final Map<UUID,Long> warnings=new HashMap<>();
  private final FireFootprint geometry;
  private final List<Location> edges;
- private FireWall wall;
+ private final Map<UUID,FireWall> walls=new HashMap<>();
  private BukkitTask task;
- private boolean closing,closed;
+ private boolean closed;
  private FireArena(Main plugin,ActiveFireAirdrop event,List<Location> surface){
   this.plugin=plugin;this.event=event;this.world=event.getCenter().getWorld();
   Map<Long,Location> columns=new HashMap<>();
@@ -65,7 +65,7 @@ public final class FireArena implements Listener {
  public void close(){
   if(closed)return;closed=true;
   if(task!=null){task.cancel();task=null;}
-  if(wall!=null){wall.close();wall=null;}
+  for(FireWall wall:walls.values())wall.close();walls.clear();
   HandlerList.unregisterAll(this);
   for(UUID id:locked.keySet()){Player p=Bukkit.getPlayer(id);if(p!=null && p.isOnline())p.sendMessage(ColorUtil.colorize("&#F8BEFBАирдроп &8» &aОгненная преграда исчезла!"));}
   locked.clear();warnings.clear();
@@ -81,7 +81,8 @@ public final class FireArena implements Listener {
   if(locked.containsKey(p.getUniqueId()) || !eligible(p) || !p.isOnGround() || !stepping(loc))return;
   locked.put(p.getUniqueId(),loc.clone());
   if(p.isInsideVehicle())p.leaveVehicle();
-  if(!closing){closing=true;wall=FireWall.start(plugin,world,edges);world.playSound(loc,Sound.BLOCK_BEACON_ACTIVATE,0.8f,0.65f);}
+  walls.put(p.getUniqueId(),FireWall.start(plugin,world,edges,p));
+  p.playSound(loc,Sound.BLOCK_BEACON_ACTIVATE,0.8f,0.65f);
   p.sendTitle(ColorUtil.colorize("&cОГНЕННЫЙ АИРДРОП"),ColorUtil.colorize("&fПреграда откроется, когда заберут лут"),5,55,10);
   p.sendMessage(ColorUtil.colorize("&#F8BEFBАирдроп &8» &fВыход откроется, когда сундук полностью оберут."));
  }
@@ -91,15 +92,16 @@ public final class FireArena implements Listener {
  }
  private void tick(){
   if(plugin.getAirdropManager().getActive()!=event || event.isLooted()){close();return;}
+  for(UUID id:new ArrayList<>(locked.keySet())){Player player=Bukkit.getPlayer(id);if(player!=null && player.isOnline() && !eligible(player))release(id);}
   for(Player p:world.getPlayers())if(eligible(p))lock(p,p.getLocation());
-  if(closing && wall!=null)wall.tick();
+  for(FireWall wall:walls.values())wall.tick();
  }
  @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
  public void move(PlayerMoveEvent e){
   if(e instanceof PlayerTeleportEvent)return;
   Player p=e.getPlayer();Location to=e.getTo();if(to==null)return;
   UUID id=p.getUniqueId();
-  if(!eligible(p)){locked.remove(id);warnings.remove(id);return;}
+  if(!eligible(p)){release(id);return;}
   if(!locked.containsKey(id)){lock(p,e.getFrom());if(!locked.containsKey(id))lock(p,to);}
   if(!locked.containsKey(id))return;
   if(!inside(to)){Location safe=inside(e.getFrom())?e.getFrom():locked.get(id);e.setTo(safe.clone());warn(p);}
@@ -109,7 +111,7 @@ public final class FireArena implements Listener {
  public void teleport(PlayerTeleportEvent e){
   Player p=e.getPlayer();UUID id=p.getUniqueId();
   if(!locked.containsKey(id))return;
-  if(!eligible(p)){locked.remove(id);warnings.remove(id);return;}
+  if(!eligible(p)){release(id);return;}
   if(!inside(e.getTo())){e.setCancelled(true);warn(p);}
   else locked.put(id,e.getTo().clone());
  }
@@ -118,13 +120,17 @@ public final class FireArena implements Listener {
   if(e.getEntered() instanceof Player && locked.containsKey(e.getEntered().getUniqueId()))e.setCancelled(true);
  }
  @EventHandler public void disable(org.bukkit.event.server.PluginDisableEvent e){if(e.getPlugin()==plugin)close();}
- @EventHandler public void death(PlayerDeathEvent e){locked.remove(e.getEntity().getUniqueId());warnings.remove(e.getEntity().getUniqueId());}
+ private void release(UUID id){locked.remove(id);warnings.remove(id);FireWall wall=walls.remove(id);if(wall!=null)wall.close();}
+ @EventHandler public void death(PlayerDeathEvent e){release(e.getEntity().getUniqueId());}
+ @EventHandler public void quit(PlayerQuitEvent e){FireWall wall=walls.remove(e.getPlayer().getUniqueId());if(wall!=null)wall.close();}
  @EventHandler public void join(PlayerJoinEvent e){
   Player p=e.getPlayer();Location safe=locked.get(p.getUniqueId());
   if(safe==null)return;
   Bukkit.getScheduler().runTask(plugin,()->{
    if(plugin.getAirdropManager().getActive()!=event || event.isLooted() || !p.isOnline() || !locked.containsKey(p.getUniqueId()))return;
-   if(eligible(p) && !inside(p.getLocation()))p.teleport(safe);
+   if(!eligible(p)){release(p.getUniqueId());return;}
+   if(!inside(p.getLocation()))p.teleport(safe);
+   if(inside(p.getLocation()))walls.put(p.getUniqueId(),FireWall.start(plugin,world,edges,p));
   });
  }
 }

@@ -8,26 +8,25 @@ import org.bukkit.block.Block;
 import org.bukkit.block.TileState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.BlockDisplay;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.event.*;
-import org.bukkit.event.block.*;
-import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import ru.rooyzee.elytrixairdrop.Main;
 
-/** Temporary physical blocks; originals are journalled before writing and recovered on restart. */
-public final class FireWall implements Listener {
- private static final int HEIGHT=6, RISE_TICKS=36, STAGGER_TICKS=12, FRAME_TICKS=2, MAX_DISPLAYS=1536;
- private final Main plugin;private final World world;
- private final List<Part> parts=new ArrayList<>();private final List<Effect> effects=new ArrayList<>();private final Map<Location,Entry> owned=new LinkedHashMap<>();
- private int elapsed;private boolean completed,closed,journalOwner;
+/** Per-player visual wall; the actual boundary is enforced by FireArena. */
+public final class FireWall {
+ private static final int HEIGHT=6, RISE_TICKS=36, STAGGER_TICKS=12, FRAME_TICKS=2, MAX_DISPLAYS=1536, GLOBAL_DISPLAY_LIMIT=3000;
+ private static int activeDisplays;
+ private final Main plugin;private final World world;private final Player viewer;
+ private final List<Part> parts=new ArrayList<>();private final List<Effect> effects=new ArrayList<>();
+ private final Set<Location> sent=new HashSet<>();
+ private int elapsed;private boolean completed,closed;
  private static final class Part {final Location target;final BlockData data;final int delay;BlockDisplay display;Part(Location t,BlockData d,int delay){target=t;data=d;this.delay=delay;}}
  private static final class Effect {final Location origin;final int delay;Effect(Location origin,int delay){this.origin=origin;this.delay=delay;}}
  private static final class Entry {final Location pos;final String original,placed;Entry(Location l,String o,String p){pos=l;original=o;placed=p;}}
- private FireWall(Main plugin,World world){this.plugin=plugin;this.world=world;}
- public static FireWall start(Main plugin,World world,List<Location> edges){
-  FireWall wall=new FireWall(plugin,world);Bukkit.getPluginManager().registerEvents(wall,plugin);
-  try{wall.prepare(edges);}catch(RuntimeException e){plugin.getLogger().warning("Fire wall could not animate: "+e.getMessage());wall.removeDisplays();}
+ private FireWall(Main plugin,World world,Player viewer){this.plugin=plugin;this.world=world;this.viewer=viewer;}
+ public static FireWall start(Main plugin,World world,List<Location> edges,Player viewer){
+  FireWall wall=new FireWall(plugin,world,viewer);
+  try{wall.prepare(edges);}catch(RuntimeException e){plugin.getLogger().warning("Personal fire wall could not animate: "+e.getMessage());wall.removeDisplays();}
   return wall;
  }
  private void prepare(List<Location> edges){
@@ -46,73 +45,53 @@ public final class FireWall implements Listener {
     parts.add(new Part(target,data,delay));
    }
   }
-  // Very large schematics still get collision blocks, without thousands of entities.
-  if(parts.size()>MAX_DISPLAYS)return;
+  // Bound the number of per-player display entities; fallback is instant private blocks.
+  if(parts.size()>MAX_DISPLAYS || activeDisplays+parts.size()>GLOBAL_DISPLAY_LIMIT){completed=true;refresh();return;}
   for(Part p:parts){
    Location initial=p.target.clone().add(0,-HEIGHT,0);
-   p.display=world.spawn(initial,BlockDisplay.class,d->{d.setBlock(p.data);d.setPersistent(false);d.setTeleportDuration(FRAME_TICKS);});
+   p.display=world.spawn(initial,BlockDisplay.class,d->{d.setVisibleByDefault(false);d.setBlock(p.data);d.setPersistent(false);d.setTeleportDuration(FRAME_TICKS);});
+   activeDisplays++;viewer.showEntity(plugin,p.display);
   }
  }
  public void tick(){
-  if(closed || completed)return;
+  if(closed || !viewer.isOnline() || !world.equals(viewer.getWorld()))return;
   elapsed+=FRAME_TICKS;
+  if(completed){if(elapsed%40==0)refresh();return;}
   for(Part p:parts)if(p.display!=null && p.display.isValid()){
-   double t=Math.max(0.0,Math.min(1.0,(elapsed-p.delay)/(double)RISE_TICKS));
-   double smooth=t*t*(3-2*t);
+   double t=Math.max(0.0,Math.min(1.0,(elapsed-p.delay)/(double)RISE_TICKS));double smooth=t*t*(3-2*t);
    p.display.teleport(p.target.clone().add(0,-HEIGHT*(1-smooth),0));
   }
-  // A restrained rim of embers and smoke follows the rising wall, not the whole region.
   if(elapsed%6==0 && !effects.isEmpty()){
    int stride=Math.max(1,(effects.size()+17)/18);
    for(int i=(elapsed/6)%stride;i<effects.size();i+=stride){
     Effect effect=effects.get(i);double t=Math.max(0.0,Math.min(1.0,(elapsed-effect.delay)/(double)RISE_TICKS));
     Location p=effect.origin.clone().add(0,HEIGHT*t*t*(3-2*t),0);
-    world.spawnParticle(Particle.FLAME,p,1,.12,.15,.12,.005);
-    world.spawnParticle(Particle.SMOKE,p,1,.12,.10,.12,.005);
+    viewer.spawnParticle(Particle.FLAME,p,1,.12,.15,.12,.005);viewer.spawnParticle(Particle.SMOKE,p,1,.12,.10,.12,.005);
    }
   }
   if(elapsed<RISE_TICKS+STAGGER_TICKS)return;
-  removeDisplays();completed=true;
-  if(recoveryFile(plugin).exists()){plugin.getLogger().severe("Fire wall recovery file exists; refusing to overwrite it. The event boundary remains active.");return;}
-  for(Part p:parts){
-   Block b=p.target.getBlock();if(!b.getType().isAir() || occupied(p.target))continue;
-   owned.put(p.target,new Entry(p.target,b.getBlockData().getAsString(),p.data.getAsString()));
-  }
-  if(owned.isEmpty())return;
-  try{
-   writeJournal(plugin,world,owned.values());journalOwner=true;
-   for(Entry e:owned.values()){
-    Block block=e.pos.getBlock();
-    if(block.getType().isAir() && !occupied(e.pos))block.setBlockData(Bukkit.createBlockData(e.placed),false);
-   }
-  }catch(Exception e){plugin.getLogger().severe("Could not build fire wall safely: "+e.getMessage());restoreOwned();}
+  removeDisplays();completed=true;refresh();
  }
  private boolean occupied(Location loc){
   BoundingBox cube=new BoundingBox(loc.getBlockX(),loc.getBlockY(),loc.getBlockZ(),loc.getBlockX()+1,loc.getBlockY()+1,loc.getBlockZ()+1);
-  Location center=loc.clone().add(.5,.5,.5);
-  for(org.bukkit.entity.Entity entity:world.getNearbyEntities(center,1.5,1.5,1.5))if(entity instanceof LivingEntity && entity.getBoundingBox().overlaps(cube))return true;
-  return false;
+  return viewer.getBoundingBox().overlaps(cube);
  }
- private void removeDisplays(){for(Part p:parts)if(p.display!=null){p.display.remove();p.display=null;}}
- public void close(){if(closed)return;closed=true;HandlerList.unregisterAll(this);removeDisplays();restoreOwned();}
- private void restoreOwned(){
-  if(!journalOwner){owned.clear();return;}
-  boolean ok=true;
-  for(Entry e:owned.values())try{restore(e);}catch(RuntimeException ex){ok=false;plugin.getLogger().severe("Fire wall cleanup failed: "+ex.getMessage());}
-  owned.clear();
-  if(ok)try{Files.deleteIfExists(recoveryFile(plugin).toPath());journalOwner=false;}catch(IOException ex){plugin.getLogger().severe("Fire wall journal cleanup failed: "+ex.getMessage());}
+ private void refresh(){
+  if(!viewer.isOnline() || !world.equals(viewer.getWorld()))return;
+  for(Part p:parts){
+   Block real=p.target.getBlock();
+   if(real.getType().isAir() && !occupied(p.target)){viewer.sendBlockChange(p.target,p.data);sent.add(p.target);}
+   else if(sent.remove(p.target))viewer.sendBlockChange(p.target,real.getBlockData());
+  }
+ }
+ private void removeDisplays(){for(Part p:parts)if(p.display!=null){p.display.remove();p.display=null;activeDisplays=Math.max(0,activeDisplays-1);}}
+ public void close(){
+  if(closed)return;closed=true;removeDisplays();
+  if(viewer.isOnline() && world.equals(viewer.getWorld()))for(Location p:sent)viewer.sendBlockChange(p,p.getBlock().getBlockData());
+  sent.clear();
  }
  private static void restore(Entry e){Block b=e.pos.getBlock();if(b.getBlockData().getAsString().equals(e.placed))b.setBlockData(Bukkit.createBlockData(e.original),false);}
  private static File recoveryFile(Main p){return new File(p.getDataFolder(),"fire-wall-recovery.bin");}
- private static void writeJournal(Main p,World w,Collection<Entry> entries)throws IOException{
-  File file=recoveryFile(p);Files.createDirectories(file.toPath().getParent());Path tmp=file.toPath().resolveSibling(file.getName()+".tmp");
-  try(FileOutputStream fos=new FileOutputStream(tmp.toFile());DataOutputStream out=new DataOutputStream(new BufferedOutputStream(fos))){
-   out.writeUTF("ELYTRIX_FIRE_WALL_1");out.writeUTF(w.getName());out.writeInt(entries.size());
-   for(Entry e:entries){out.writeInt(e.pos.getBlockX());out.writeInt(e.pos.getBlockY());out.writeInt(e.pos.getBlockZ());out.writeUTF(e.original);out.writeUTF(e.placed);}
-   out.flush();fos.getFD().sync();
-  }
-  try{Files.move(tmp,file.toPath(),StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException ex){Files.move(tmp,file.toPath());}
- }
  /** Run once after plugin enable. Leave journal intact if the world or any block cannot be restored. */
  public static void recover(Main plugin){Bukkit.getScheduler().runTask(plugin,()->recoverNow(plugin));}
  private static void recoverNow(Main plugin){
@@ -126,10 +105,4 @@ public final class FireWall implements Listener {
    Files.delete(f.toPath());plugin.getLogger().info("Recovered temporary fire wall blocks after restart");
   }catch(Exception e){plugin.getLogger().severe("Could not recover temporary fire wall; keep journal and check world: "+e.getMessage());}
  }
- @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void onBreak(BlockBreakEvent e){if(owned.containsKey(e.getBlock().getLocation()))e.setCancelled(true);}
- @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void onBurn(BlockBurnEvent e){if(owned.containsKey(e.getBlock().getLocation()))e.setCancelled(true);}
- @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void onPistonExtend(BlockPistonExtendEvent e){if(e.getBlocks().stream().anyMatch(b->owned.containsKey(b.getLocation())))e.setCancelled(true);}
- @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void onPistonRetract(BlockPistonRetractEvent e){if(e.getBlocks().stream().anyMatch(b->owned.containsKey(b.getLocation())))e.setCancelled(true);}
- @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void onExplode(EntityExplodeEvent e){e.blockList().removeIf(b->owned.containsKey(b.getLocation()));}
- @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void onBlockExplode(BlockExplodeEvent e){e.blockList().removeIf(b->owned.containsKey(b.getLocation()));}
 }
