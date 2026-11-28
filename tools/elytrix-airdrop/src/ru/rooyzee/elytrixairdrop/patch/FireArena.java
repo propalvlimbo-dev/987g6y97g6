@@ -32,7 +32,14 @@ public final class FireArena implements Listener {
  private FireArena(Main plugin,ActiveFireAirdrop event,List<Location> surface){
   this.plugin=plugin;this.event=event;this.world=event.getCenter().getWorld();
   Map<Long,Location> columns=new HashMap<>();
-  for(Location p:surface){long k=FireFootprint.key(p.getBlockX(),p.getBlockZ());Location old=columns.get(k);if(old==null || p.getBlockY()<old.getBlockY())columns.put(k,p.getBlock().getLocation());}
+  for(Location p:surface){
+   long k=FireFootprint.key(p.getBlockX(),p.getBlockZ());Location old=columns.get(k);
+   // Prefer the highest full, opaque block as the surface; fall back to the
+   // highest partial block for columns made entirely of stairs or slabs.
+   boolean full=p.getBlock().getType().isOccluding();
+   boolean oldFull=old!=null && old.getBlock().getType().isOccluding();
+   if(old==null || (full && !oldFull) || (full==oldFull && p.getBlockY()>old.getBlockY()))columns.put(k,p.getBlock().getLocation());
+  }
   geometry=new FireFootprint(columns.keySet());edges=new ArrayList<>();for(long k:geometry.edges())edges.add(columns.get(k));
   for(Location pos:surface)if(world.equals(pos.getWorld()) && pos.getBlock().getType().isSolid())footprint.add(pos.getBlock().getLocation());
  }
