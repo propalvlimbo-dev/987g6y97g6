@@ -19,6 +19,6 @@ mkdir -p "$tmp/jar" "$tmp/base" "$tmp/patch" "$tmp/compiled"
 mkdir -p "$tmp/jar/ru/rooyzee/elytrixtrader/patch"
 cp "$tmp/base/ru/rooyzee/elytrixtrader/patch/"*.class "$tmp/jar/ru/rooyzee/elytrixtrader/patch/"
 cp "$tmp/compiled/ru/rooyzee/elytrixtrader/patch/TraderGalaxy"*.class "$tmp/jar/ru/rooyzee/elytrixtrader/patch/"
-(cd "$tmp/jar" && zip -qr "$ROOT/finalbuild/ElytrixTrader-TEST4.jar" .)
-unzip -t "$ROOT/finalbuild/ElytrixTrader-TEST4.jar" | tail -1
-"$JAVA" -cp "$tmp/patch:$ASM" GalaxyBytecodeTest "$ROOT/finalbuild/ElytrixTrader-TEST4.jar"
+(cd "$tmp/jar" && zip -qr "$ROOT/finalbuild/ElytrixTrader-TEST5.jar" .)
+unzip -t "$ROOT/finalbuild/ElytrixTrader-TEST5.jar" | tail -1
+"$JAVA" -cp "$tmp/patch:$ASM" GalaxyBytecodeTest "$ROOT/finalbuild/ElytrixTrader-TEST5.jar"

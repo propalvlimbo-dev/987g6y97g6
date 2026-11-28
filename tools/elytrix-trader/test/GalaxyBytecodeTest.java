@@ -13,19 +13,19 @@ public class GalaxyBytecodeTest {
     if(name.equals("trader/TraderManager") && m.name.equals("spawnInternal") && c.owner.equals(BASE+"model/SchematicConfig") && c.name.equals("enabled"))schematic++;
    }
    if(start!=1||remove!=4||stop!=1||schematic!=0)throw new AssertionError(start+" "+remove+" "+stop+" "+schematic);
-   int orbCreate=0,orbTrack=0;
+   int spawn=0,teleport=0;
    for(MethodNode m:read(z,"patch/TraderGalaxy$Orbit").methods)for(AbstractInsnNode n:m.instructions){
-    if(n instanceof TypeInsnNode && ((TypeInsnNode)n).desc.contains("BlockDisplay"))throw new AssertionError("Old ground blocks remain");
+    if(n instanceof TypeInsnNode && ((TypeInsnNode)n).desc.contains("VirtualExperienceOrb"))throw new AssertionError("Old orbs remain");
     if(n instanceof MethodInsnNode){MethodInsnNode c=(MethodInsnNode)n;
-     if(c.owner.equals("dev/by1337/virtualentity/api/virtual/VirtualExperienceOrb") && c.name.equals("create"))orbCreate++;
-     if(c.owner.equals("dev/by1337/virtualentity/api/tracker/PlayerTracker") && c.name.equals("tick"))orbTrack++;
-     if(c.owner.equals("org/bukkit/World") && (c.name.equals("spawn") || c.name.equals("setBlock")))throw new AssertionError("Unexpected world modification");
+     if(c.owner.contains("VirtualExperienceOrb"))throw new AssertionError("Old orb calls remain");
+     if(c.owner.equals("org/bukkit/World") && c.name.equals("spawn"))spawn++;
+     if(c.owner.equals("org/bukkit/entity/BlockDisplay") && c.name.equals("teleport"))teleport++;
+     if(c.owner.equals("org/bukkit/block/Block") && c.name.startsWith("set"))throw new AssertionError("World blocks modified");
     }
    }
-   if(orbCreate!=1 || orbTrack!=1)throw new AssertionError("Missing orb lifecycle");
-   if(z.getEntry("dev/by1337/virtualentity/api/virtual/VirtualExperienceOrb.class")!=null)throw new AssertionError("Test stub leaked");
+   if(spawn!=1 || teleport!=1)throw new AssertionError("Missing block animation");
    if(z.getEntry("org/bukkit/Bukkit.class")!=null || z.getEntry(BASE+"patch/TraderGalaxy.class")==null)throw new AssertionError("Bad packaging");
-   System.out.println("Galaxy and no-schematic bytecode hooks OK");
+   System.out.println("Flying-block and no-schematic bytecode hooks OK");
   }
  }
 }
