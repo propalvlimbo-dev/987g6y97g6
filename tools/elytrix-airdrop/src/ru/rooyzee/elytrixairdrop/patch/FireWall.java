@@ -17,11 +17,12 @@ import ru.rooyzee.elytrixairdrop.Main;
 
 /** Temporary physical blocks; originals are journalled before writing and recovered on restart. */
 public final class FireWall implements Listener {
- private static final int HEIGHT=6, RISE_TICKS=30,MAX_DISPLAYS=1536;
+ private static final int HEIGHT=6, RISE_TICKS=36, STAGGER_TICKS=12, FRAME_TICKS=2, MAX_DISPLAYS=1536;
  private final Main plugin;private final World world;
- private final List<Part> parts=new ArrayList<>();private final Map<Location,Entry> owned=new LinkedHashMap<>();
+ private final List<Part> parts=new ArrayList<>();private final List<Effect> effects=new ArrayList<>();private final Map<Location,Entry> owned=new LinkedHashMap<>();
  private int elapsed;private boolean completed,closed,journalOwner;
- private static final class Part {final Location target;final BlockData data;BlockDisplay display;Part(Location t,BlockData d){target=t;data=d;}}
+ private static final class Part {final Location target;final BlockData data;final int delay;BlockDisplay display;Part(Location t,BlockData d,int delay){target=t;data=d;this.delay=delay;}}
+ private static final class Effect {final Location origin;final int delay;Effect(Location origin,int delay){this.origin=origin;this.delay=delay;}}
  private static final class Entry {final Location pos;final String original,placed;Entry(Location l,String o,String p){pos=l;original=o;placed=p;}}
  private FireWall(Main plugin,World world){this.plugin=plugin;this.world=world;}
  public static FireWall start(Main plugin,World world,List<Location> edges){
@@ -30,27 +31,47 @@ public final class FireWall implements Listener {
   return wall;
  }
  private void prepare(List<Location> edges){
+  double centerX=0,centerZ=0;
+  for(Location edge:edges){centerX+=edge.getX()+.5;centerZ+=edge.getZ()+.5;}
+  if(!edges.isEmpty()){centerX/=edges.size();centerZ/=edges.size();}
   for(Location edge:edges){
    Block source=edge.getBlock();if(!source.getType().isSolid())continue;
    BlockData data=source.getState() instanceof TileState?Material.BLACKSTONE.createBlockData():source.getBlockData().clone();
+   double angle=Math.atan2(edge.getZ()+.5-centerZ,edge.getX()+.5-centerX);
+   int delay=(int)Math.round(STAGGER_TICKS*(angle+Math.PI)/(2*Math.PI));
+   effects.add(new Effect(edge.clone().add(.5,1.0,.5),delay));
    for(int y=1;y<=HEIGHT;y++){
     Location target=edge.clone().add(0,y,0).getBlock().getLocation();
     if(target.getBlockY()>=world.getMaxHeight() || !target.getBlock().getType().isAir())continue;
-    parts.add(new Part(target,data));
+    parts.add(new Part(target,data,delay));
    }
   }
   // Very large schematics still get collision blocks, without thousands of entities.
   if(parts.size()>MAX_DISPLAYS)return;
   for(Part p:parts){
    Location initial=p.target.clone().add(0,-HEIGHT,0);
-   p.display=world.spawn(initial,BlockDisplay.class,d->{d.setBlock(p.data);d.setPersistent(false);d.setTeleportDuration(5);});
+   p.display=world.spawn(initial,BlockDisplay.class,d->{d.setBlock(p.data);d.setPersistent(false);d.setTeleportDuration(FRAME_TICKS);});
   }
  }
  public void tick(){
   if(closed || completed)return;
-  elapsed+=5;double t=Math.min(1.0,elapsed/(double)RISE_TICKS);double smooth=t*t*(3-2*t);
-  for(Part p:parts)if(p.display!=null && p.display.isValid())p.display.teleport(p.target.clone().add(0,-HEIGHT*(1-smooth),0));
-  if(elapsed<RISE_TICKS)return;
+  elapsed+=FRAME_TICKS;
+  for(Part p:parts)if(p.display!=null && p.display.isValid()){
+   double t=Math.max(0.0,Math.min(1.0,(elapsed-p.delay)/(double)RISE_TICKS));
+   double smooth=t*t*(3-2*t);
+   p.display.teleport(p.target.clone().add(0,-HEIGHT*(1-smooth),0));
+  }
+  // A restrained rim of embers and smoke follows the rising wall, not the whole region.
+  if(elapsed%6==0 && !effects.isEmpty()){
+   int stride=Math.max(1,(effects.size()+17)/18);
+   for(int i=(elapsed/6)%stride;i<effects.size();i+=stride){
+    Effect effect=effects.get(i);double t=Math.max(0.0,Math.min(1.0,(elapsed-effect.delay)/(double)RISE_TICKS));
+    Location p=effect.origin.clone().add(0,HEIGHT*t*t*(3-2*t),0);
+    world.spawnParticle(Particle.FLAME,p,1,.12,.15,.12,.005);
+    world.spawnParticle(Particle.SMOKE,p,1,.12,.10,.12,.005);
+   }
+  }
+  if(elapsed<RISE_TICKS+STAGGER_TICKS)return;
   removeDisplays();completed=true;
   if(recoveryFile(plugin).exists()){plugin.getLogger().severe("Fire wall recovery file exists; refusing to overwrite it. The event boundary remains active.");return;}
   for(Part p:parts){

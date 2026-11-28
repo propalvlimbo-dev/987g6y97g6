@@ -16,7 +16,7 @@ import ru.rooyzee.elytrixairdrop.Main;
 import ru.rooyzee.elytrixairdrop.airdrops.types.ActiveFireAirdrop;
 import ru.rooyzee.elytrixairdrop.utils.ColorUtil;
 
-/** Visual wall plus server-side boundary: no blocks are changed. */
+/** Schematic contact starts the physical wall and server-side boundary. */
 public final class FireArena implements Listener {
  private final Main plugin;
  private final ActiveFireAirdrop event;
@@ -59,7 +59,7 @@ public final class FireArena implements Listener {
   if(surface.isEmpty() || event.getCenter().getWorld()==null)return null;
   FireArena arena=new FireArena(plugin,event,surface);
   Bukkit.getPluginManager().registerEvents(arena,plugin);
-  arena.task=Bukkit.getScheduler().runTaskTimer(plugin,arena::tick,1L,5L);
+  arena.task=Bukkit.getScheduler().runTaskTimer(plugin,arena::tick,1L,2L);
   return arena;
  }
  public void close(){
@@ -78,7 +78,7 @@ public final class FireArena implements Listener {
   return footprint.contains(below) && below.getBlock().getType().isSolid();
  }
  private void lock(Player p,Location loc){
-  if(locked.containsKey(p.getUniqueId()) || !eligible(p) || !stepping(loc))return;
+  if(locked.containsKey(p.getUniqueId()) || !eligible(p) || !p.isOnGround() || !stepping(loc))return;
   locked.put(p.getUniqueId(),loc.clone());
   if(p.isInsideVehicle())p.leaveVehicle();
   if(!closing){closing=true;wall=FireWall.start(plugin,world,edges);world.playSound(loc,Sound.BLOCK_BEACON_ACTIVATE,0.8f,0.65f);}

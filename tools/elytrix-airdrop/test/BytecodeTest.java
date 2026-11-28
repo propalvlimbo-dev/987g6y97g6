@@ -21,7 +21,7 @@ public class BytecodeTest implements Opcodes {
    if(!damage||!drop)throw new AssertionError("small meteor impact missing");
    boolean debrisHook=false,crater=false,guard=false,fragmentSpawn=false,fragmentCleanup=false,damageValue=false;
    for(MethodNode m:fire.methods)for(AbstractInsnNode i:m.instructions){
-    if(m.name.equals("impactSmall") && i instanceof LdcInsnNode && Double.valueOf(9.0).equals(((LdcInsnNode)i).cst))damageValue=true;
+    if(m.name.equals("impactSmall") && i instanceof LdcInsnNode && Double.valueOf(14.0).equals(((LdcInsnNode)i).cst))damageValue=true;
     if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;
      if(m.name.equals("impactSmall")&&call.name.equals("spawnDebris"))debrisHook=true;
      if(m.name.equals("carveImpact")&&call.name.equals("setType"))crater=true;

@@ -267,7 +267,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   spawnDebris(impact);
   for(Player player:world.getPlayers()){
    if(player.getGameMode()==GameMode.CREATIVE||player.getGameMode()==GameMode.SPECTATOR||player.isDead())continue;
-   if(player.getLocation().distanceSquared(impact)<=16.0)player.damage(9.0);
+   if(player.getLocation().distanceSquared(impact)<=16.0)player.damage(14.0);
   }
   if(!award)return;
   int nearby=NearbyRewards.players(getCenter());
