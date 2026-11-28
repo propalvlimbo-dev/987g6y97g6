@@ -1,0 +1,7 @@
+# ElytrixTrader TEST1
+
+Patches the original `ElytrixTrader.jar` from main commit dd05efe (SHA-256 `2344ad2f86ffc7189960824770feb4e8a5836b31fce9772f7962056ca883a62a`). Build with `./tools/elytrix-trader/build.sh /absolute/path/ElytrixTrader.jar`; see script for dependency paths. The compiled artifact is `finalbuild/ElytrixTrader-TEST1.jar`.
+
+Only `traders/experienced.yml` is loaded as a trader; other trader config files are left intact. Existing trade files are still loaded, including shared IDs referenced by experienced. Existing configuration, trade editor, scheduling and placeholder expansion are not reset. Hologram text and placeholders remain configured by `experienced.yml`; the first line becomes a larger pink title, default green accent becomes pink, while custom body colors remain. Global and trader hologram enable flags and height remain respected. The display layout uses fixed Airdrop-style spacing rather than the old armor stand line-height.
+
+Two nonpersistent TextDisplays use transparent background, shadow and title/body scaling matching Airdrop. They are removed on animation, despawn, reload and disable; missing/cancelled display spawns retry when the NPC updates, without forcing chunks to load. The virtual armor stands are disabled. Basic filtering and Java bytecode verification were run; no live Minecraft server test was available. Back up the existing plugin data before installing and test trading, chunk unload/reload, animation and plugin reload on the target server.
