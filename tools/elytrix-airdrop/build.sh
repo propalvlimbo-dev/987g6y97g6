@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # JAVA is a Java 21 runtime; ECJ and ASM_CP are Eclipse compiler / ASM jars.
-# API_CP is the target server's Bukkit/Leaf API and dependency jars, including JOML.
+# API_CP is the target server's Bukkit/Leaf API and dependency jars, including JOML, PlaceholderAPI and WorldEdit/FAWE.
 : "${JAVA:?}" "${ECJ:?}" "${ASM_CP:?}" "${API_CP:?}" "${ORIGINAL_JAR:?}" "${OUTPUT_JAR:?}"
 root=$(cd "$(dirname "$0")" && pwd)
 expected=1ae338dae6e5ffb2ba819ecde808595f4500826f8b8b01f9e8262f1a0b493330
@@ -19,6 +19,7 @@ cp -R "$tmp/compiled/ru" "$tmp/classes/"
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" WeightedLootTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.SkyMechanicsTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.FireScheduleTest
+"$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.FireFootprintTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.ReopenGuardTest
 "$JAVA" -cp "$tmp/tests:$tmp/compiled:$ORIGINAL_JAR:$API_CP" ru.rooyzee.elytrixairdrop.patch.HologramTextTest
 sed -i 's/^version: 1.0.0/version: 1.0.0-test-elytrix/' "$tmp/classes/plugin.yml"

@@ -63,6 +63,11 @@ public class BytecodeTest implements Opcodes {
    ClassNode main=read(jar,BASE+"Main");boolean chest=false, sky=false;
    for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.owner.equals(BASE+"patch/PeacefulChest")&&a.name.equals("install"))chest=true;if(a.owner.equals(BASE+"patch/SkyMechanics")&&a.name.equals("install"))sky=true;}
    if(!chest||!sky)throw new AssertionError("mechanics installation missing");
+   ClassNode arenaClass=read(jar,BASE+"patch/FireArena"),wallClass=read(jar,BASE+"patch/FireWall");boolean fromClipboard=false,wallStart=false,journal=false,blocks=false,recover=false;
+   for(MethodNode m:arenaClass.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("getFullBlock")&&a.owner.contains("Clipboard"))fromClipboard=true;if(a.owner.equals(BASE+"patch/FireWall")&&a.name.equals("start"))wallStart=true;}
+   for(MethodNode m:wallClass.methods)for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.name.equals("writeJournal"))journal=true;if(a.name.equals("setBlockData"))blocks=true;}
+   for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/FireWall")&&((MethodInsnNode)i).name.equals("recover"))recover=true;
+   if(!fromClipboard||!wallStart||!journal||!blocks||!recover)throw new AssertionError("schematic contour, physical wall or crash recovery hook missing");
    ClassNode safeChest=read(jar,BASE+"patch/PeacefulChest");
    boolean scheduled=false,reopened=false,guarded=false,reasonCheck=false;
    for(MethodNode m:safeChest.methods)for(AbstractInsnNode i:m.instructions){

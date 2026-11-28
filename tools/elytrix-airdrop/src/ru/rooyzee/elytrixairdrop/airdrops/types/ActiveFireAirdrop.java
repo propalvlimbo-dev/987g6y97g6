@@ -62,7 +62,8 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
   if(meteorCenter!=null)plugin.getHologramManager().moveHologram(getHologramName(),meteorCenter.clone().add(0.5,MeteorGeometry.hologramAboveCenter(),0.5));
   updateHologram(config);
   if(centerLanding==null || meteorCenter==null){plugin.getLogger().severe("Fire airdrop: no safe air space for the meteor above the schematic");Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
-  arena=FireArena.start(plugin,this,surface);
+  try{arena=FireArena.start(plugin,this,config);}
+  catch(RuntimeException ex){plugin.getLogger().severe("Fire arena cannot use schematic footprint: "+ex.getMessage());Bukkit.getScheduler().runTask(plugin,()->{if(plugin.getAirdropManager().getActive()==this)plugin.getAirdropManager().stop(false);});return;}
   animationTask=Bukkit.getScheduler().runTaskTimer(plugin,this::animate,1L,1L);
  }
  @Override public void onTick(Main plugin,ConfigurationSection config){

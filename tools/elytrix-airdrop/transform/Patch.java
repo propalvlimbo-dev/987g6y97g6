@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 23) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 24) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -20,7 +20,7 @@ public class Patch implements Opcodes {
     for(MethodNode m:c.methods) {
       if(name.equals(base+"Main") && m.name.equals("onEnable")) {
         for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) if(n.getOpcode()==RETURN) {
-          InsnList x=new InsnList(); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/EventBar","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,runtime,"install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/AdminControls","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulChest","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/SkyMechanics","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulMechanics","install","(L"+base+"Main;)V",false)); hooks++; x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/LootPreset","install","(L"+base+"Main;)V",false)); m.instructions.insertBefore(n,x); hooks++; break;
+          InsnList x=new InsnList(); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/EventBar","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,runtime,"install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/AdminControls","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulChest","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/SkyMechanics","install","(L"+base+"Main;)V",false)); x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/PeacefulMechanics","install","(L"+base+"Main;)V",false)); hooks++; x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/FireWall","recover","(L"+base+"Main;)V",false)); hooks++; x.add(new VarInsnNode(ALOAD,0)); x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/LootPreset","install","(L"+base+"Main;)V",false)); m.instructions.insertBefore(n,x); hooks++; break;
         }
       }
       if(name.equals(base+"listeners/ProtectionListener") && (m.name.equals("onTeleport") || m.name.equals("onPearlThrow"))) {
