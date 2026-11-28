@@ -1,0 +1,1 @@
+package org.bukkit; import org.bukkit.block.data.BlockData; public enum Material { EMERALD_BLOCK,GREEN_STAINED_GLASS,LIME_STAINED_GLASS,LIME_CONCRETE,PRISMARINE,VERDANT_FROGLIGHT; public BlockData createBlockData(){return null;} }

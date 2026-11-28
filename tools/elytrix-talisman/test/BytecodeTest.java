@@ -1,0 +1,4 @@
+import java.util.zip.*;import java.io.*;import org.objectweb.asm.*;import org.objectweb.asm.tree.*;import org.objectweb.asm.tree.analysis.*;
+public class BytecodeTest {
+ public static void main(String[]a)throws Exception{try(ZipFile z=new ZipFile(a[0])){for(String n:new String[]{"model/TalismanSession","service/RegionService","service/LocationService","service/SchematicService","manager/TalismanManager","manager/ScheduleManager","listener/PlayerDeathListener","service/HologramService","patch/RecoveryGuard"}){ClassNode c=new ClassNode();new ClassReader(z.getInputStream(z.getEntry("ru/rooyzee/elytrixtalisman/"+n+".class"))).accept(c,0);for(MethodNode m:c.methods)if((m.access&(Opcodes.ACC_ABSTRACT|Opcodes.ACC_NATIVE))==0)new Analyzer<BasicValue>(new BasicVerifier()).analyze(c.name,m);System.out.println("Bytecode analyzed: "+n);}}}
+}

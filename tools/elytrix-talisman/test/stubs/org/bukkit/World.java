@@ -1,0 +1,1 @@
+package org.bukkit; public interface World {boolean isChunkLoaded(int x,int z);Chunk getChunkAt(int x,int z);<T extends org.bukkit.entity.Entity> T spawn(Location l,Class<T> t);<T> void spawnParticle(Particle p,Location l,int count,double x,double y,double z,double speed,T data);}

@@ -1,0 +1,1 @@
+package org.bukkit.entity;import org.bukkit.util.Transformation;public interface Display extends Entity {enum Billboard{CENTER} public static class Brightness {public Brightness(int b,int s){}} void setBillboard(Billboard b);void setTransformation(Transformation t);void setInterpolationDuration(int t);void setTeleportDuration(int t);void setBrightness(Brightness b);}

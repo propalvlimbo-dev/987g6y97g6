@@ -1,0 +1,1 @@
+package org.bukkit.entity;import org.bukkit.Color;public interface TextDisplay extends Display {void setDefaultBackground(boolean b);void setBackgroundColor(Color c);void setShadowed(boolean b);void setSeeThrough(boolean b);void setTextOpacity(byte b);void setLineWidth(int n);void setText(String s);}

@@ -1,0 +1,1 @@
+package ru.rooyzee.elytrixtalisman.util;import java.util.Map;public class PlaceholderUtil {public static String replace(String s,Map<String,String> p){for(Map.Entry<String,String> e:p.entrySet())s=s.replace(e.getKey(),e.getValue());return s;}}
