@@ -1,1 +1,1 @@
-package ru.rooyzee.elytrixtrader.model; import org.bukkit.Location; public class TraderInstance {public Location loc; public Location location(){return loc;}}
+package ru.rooyzee.elytrixtrader.model; import org.bukkit.Location; public class TraderInstance {public Location loc;public boolean alive=true,despawning;public Location location(){return loc;}public boolean alive(){return alive;}public boolean isDespawning(){return despawning;}}

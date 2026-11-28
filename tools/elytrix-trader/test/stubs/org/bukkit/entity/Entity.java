@@ -1,1 +1,1 @@
-package org.bukkit.entity; import org.bukkit.Location; public interface Entity {void remove(); boolean isValid(); void setGravity(boolean value); void setPersistent(boolean v); void setInvulnerable(boolean v); boolean teleport(Location l);}
+package org.bukkit.entity; import java.util.UUID;import org.bukkit.Location; public interface Entity {UUID getUniqueId();void remove(); boolean isValid(); void setGravity(boolean value); void setPersistent(boolean v); void setInvulnerable(boolean v); boolean teleport(Location l);}

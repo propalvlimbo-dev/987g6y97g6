@@ -1,0 +1,1 @@
+package ru.rooyzee.elytrixtrader.gui;import org.bukkit.entity.Player;import ru.rooyzee.elytrixtrader.model.TraderInstance;public class TradeMenuGui {public int calls;public Player lastPlayer;public TraderInstance lastTrader;public void interact(Player p,TraderInstance t){calls++;lastPlayer=p;lastTrader=t;}}
