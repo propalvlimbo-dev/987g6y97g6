@@ -1,0 +1,81 @@
+id: elytrix:merchant_event
+provider: default
+type: chest
+size: 54
+title: '&#F8BEFB&lТорговец опытом'
+items:
+  informations:
+    material: paper
+    name: '&7« &aОпытный торговец &7»'
+    lore:
+      - '&#F8BEFB&l┃ '
+      - '&#F8BEFB&l┃ &fСтатус / старт: %elytrixtrader_tracker%'
+      - '&#F8BEFB&l┃ &fОплата: &aуровни опыта'
+      - '&#F8BEFB&l┃ '
+      - '&7● &fОбновляется автоматически'
+    tick_speed: 20
+    on_tick: '[update]'
+  coordinates:
+    material: compass
+    name: '&7« &#F8BEFBКоординаты &7»'
+    lore:
+      - '&#F8BEFB&l┃ '
+      - '&#F8BEFB&l┃ &f%elytrixtrader_location%'
+      - '&#F8BEFB&l┃ '
+    tick_speed: 20
+    on_tick: '[update]'
+  assortment:
+    material: experience_bottle
+    name: '&7« &aСделки за опыт &7»'
+    lore:
+      - '&#F8BEFB&l┃ '
+      - '&#F8BEFB&l┃ &fПодойди к торговцу и нажми ПКМ.'
+      - '&#F8BEFB&l┃ &fВыбирай предметы и плати опытом.'
+  back:
+    material: black_dye
+    name: '&7« &#F8BEFBНазад к ивентам &7»'
+    lore:
+      - '&#F8BEFB&l┃ &fВернуться к списку активностей.'
+    on_click:
+      - '[open] elytrix:events'
+  info:
+    material: paper
+    name: '&7« &#F8BEFBИнформация &7»'
+    lore:
+      - '&#F8BEFB&l┃ &fТорговец появляется на ограниченное время.'
+  design_purple_panel:
+    material: purple_stained_glass_pane
+    name: '&r'
+  design_black_panel:
+    material: black_stained_glass_pane
+    name: '&r'
+animation:
+  - tick: 0
+    opcodes:
+      - st: back 45
+      - st: info 49
+      - st: design_purple_panel 46,47
+      - sound: 'block.enchantment_table.use 0.3 1.5'
+  - opcodes:
+      - st: design_purple_panel 48,50,51,52,53
+      - sound: 'block.note_block.chime 0.22 0.91'
+  - opcodes:
+      - st: design_purple_panel 36,37,43,44
+  - opcodes:
+      - st: design_purple_panel 27,35
+      - st: design_black_panel 18,26
+      - sound: 'block.note_block.chime 0.25 1.05'
+  - opcodes:
+      - st: design_black_panel 9,10,16,17
+  - opcodes:
+      - st: design_black_panel 0,1,2,3,4,5,6,7,8
+      - sound: 'block.note_block.chime 0.28 1.21'
+  - opcodes:
+      - st: informations 20
+      - sound: 'block.note_block.pling 0.27 1.0'
+  - opcodes:
+      - st: coordinates 22
+      - sound: 'block.note_block.pling 0.30 1.2'
+  - opcodes:
+      - st: assortment 24
+      - sound: 'block.amethyst_block.chime 0.4 1.4'

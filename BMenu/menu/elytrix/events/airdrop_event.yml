@@ -10,15 +10,12 @@ items:
     name: '&7« &#F8BEFBИнформация об аирдропах &7»'
     lore:
     - '&#F8BEFB&l┃ '
-    - '&#F8BEFB&l┃ &fСтатус: &#F8BEFB%elytrixairdrop_status%'
-    - '&#F8BEFB&l┃ &fТаймер: &#F8BEFB%elytrixairdrop_time%'
+    - '&#F8BEFB&l┃ &fСейчас / старт: &#F8BEFB%elytrixairdrop_time%'
     - '&#F8BEFB&l┃ &fТип: &#F8BEFB%elytrixairdrop_type%'
     - '&#F8BEFB&l┃ &fЭтап: %elytrixairdrop_stage%'
     - '&#F8BEFB&l┃ &fКоординаты: &#F8BEFB%elytrixairdrop_location%'
-    - '&#F8BEFB&l┃ &fОнлайн / минимум: &#F8BEFB%elytrixairdrop_online%'
     - '&#F8BEFB&l┃ '
-    - '&#F8BEFB&l┃ &fИгроки рядом влияют на награды.'
-    - '&7● &fИнформация обновляется каждую секунду'
+    - '&7● &fОбновляется автоматически'
     on_click:
     - '[close]'
     tick_speed: 20

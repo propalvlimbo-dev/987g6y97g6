@@ -1,4 +1,4 @@
-# Активные события и торговцы ElytriX, включая страницы Кладбища и Данжей.
+# Краткий обзор событий ElytriX.
 id: elytrix:events
 provider: default
 type: chest
@@ -10,12 +10,9 @@ items:
     name: '&7« &#F8BEFBАирдропы &7»'
     lore:
       - '&#F8BEFB&l┃ '
-      - '&#F8BEFB&l┃ &fСтатус: &#F8BEFB%elytrixairdrop_status%'
-      - '&#F8BEFB&l┃ &fТаймер: &#F8BEFB%elytrixairdrop_time%'
+      - '&#F8BEFB&l┃ &fСейчас / старт: &#F8BEFB%elytrixairdrop_time%'
       - '&#F8BEFB&l┃ &fТип: &#F8BEFB%elytrixairdrop_type%'
-      - '&#F8BEFB&l┃ &fЭтап: %elytrixairdrop_stage%'
-      - '&#F8BEFB&l┃ &fЛокация: &#F8BEFB%elytrixairdrop_location%'
-      - '&#F8BEFB&l┃ &fСуть: &#F8BEFBтри события с наградами'
+      - '&#F8BEFB&l┃ &fКоординаты: &#F8BEFB%elytrixairdrop_location%'
       - '&#F8BEFB&l┃ '
       - '&7● &fНажмите для подробностей'
     on_click:
@@ -27,8 +24,7 @@ items:
     name: '&7« &#F8BEFBЗахват талисмана &7»'
     lore:
       - '&#F8BEFB&l┃ '
-      - '&#F8BEFB&l┃ &fРасписание: &#F8BEFBежедневно в 17:30'
-      - '&#F8BEFB&l┃ &fФормат: &#F8BEFBклановое событие'
+      - '&#F8BEFB&l┃ &fРасписание: &#F8BEFBежедневно в 17:30 МСК'
       - '&#F8BEFB&l┃ &fЦель: &#F8BEFBудержание точки'
       - '&#F8BEFB&l┃ '
       - '&7● &fНажмите для подробностей'
@@ -39,15 +35,13 @@ items:
     name: '&7« &aОпытный торговец &7»'
     lore:
       - '&#F8BEFB&l┃ '
-      - '&#F8BEFB&l┃ &fСледующее появление: &#F8BEFB%elytrixtrader_experienced_time%'
-      - '&#F8BEFB&l┃ &fЛокация: &#F8BEFB%elytrixtrader_experienced_location%'
-      - '&#F8BEFB&l┃ &fКоординаты: &#F8BEFBX %elytrixtrader_experienced_x%, Y %elytrixtrader_experienced_y%, Z %elytrixtrader_experienced_z%'
+      - '&#F8BEFB&l┃ &fСтатус / старт: %elytrixtrader_tracker%'
       - '&#F8BEFB&l┃ &fОплата: &aуровни опыта'
       - '&#F8BEFB&l┃ '
       - '&7● &fНажмите для подробностей'
     on_click:
       - '[open] elytrix:merchant_event'
-    tick_speed: 400
+    tick_speed: 20
     on_tick: '[update]'
   info:
     material: paper
