@@ -76,6 +76,16 @@ public class BytecodeTest implements Opcodes {
    ClassNode peace=read(jar,BASE+"airdrops/types/ActivePeacefulAirdrop");boolean generate=false,tracked=false;
    for(MethodNode m:peace.methods)if(m.name.equals("openLoot"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;if(call.name.equals("preparePeaceful"))generate=true;if(call.name.equals("track"))tracked=true;}
    if(!generate||!tracked)throw new AssertionError("peaceful hooks missing");
+   boolean lowOnlineSilenced=false, schedulerOnline=false, retryField=false;
+   for(MethodNode m:manager.methods)if(m.name.startsWith("lambda$startScheduler$"))for(AbstractInsnNode i:m.instructions){
+    if(i instanceof LdcInsnNode && "Airdrop delayed: online < 5".equals(((LdcInsnNode)i).cst)){
+      AbstractInsnNode next=i.getNext();while(next!=null && next.getOpcode()<0)next=next.getNext();
+      if(next==null || next.getOpcode()!=POP2)throw new AssertionError("low online log still active");lowOnlineSilenced=true;
+    }
+    if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals("org/bukkit/Bukkit") && ((MethodInsnNode)i).name.equals("getOnlinePlayers"))schedulerOnline=true;
+    if(i instanceof FieldInsnNode && ((FieldInsnNode)i).name.equals("nextRetry"))retryField=true;
+   }
+   if(!lowOnlineSilenced || !schedulerOnline || !retryField)throw new AssertionError("scheduler low online suppression/check missing");
    int timeoutHooks=0; for(MethodNode m:manager.methods)if(m.name.startsWith("lambda$startScheduler$"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/PeacefulMechanics") && ((MethodInsnNode)i).name.equals("endTime"))timeoutHooks++;
    boolean life=false,oldLaunch=false,grace=false,installed=false;
    for(MethodNode m:peace.methods){for(AbstractInsnNode i:m.instructions){

@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 22) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 23) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -57,6 +57,13 @@ public class Patch implements Opcodes {
         }
       }
       if(name.equals(base+"managers/AirdropManager") && m.name.startsWith("lambda$startScheduler$")) {
+        for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()){
+          if(n instanceof LdcInsnNode && "Airdrop delayed: online < 5".equals(((LdcInsnNode)n).cst)){
+            AbstractInsnNode call=nextOp(n);
+            if(!(call instanceof MethodInsnNode) || !((MethodInsnNode)call).owner.equals("java/util/logging/Logger") || !((MethodInsnNode)call).name.equals("info") || !((MethodInsnNode)call).desc.equals("(Ljava/lang/String;)V"))throw new IllegalStateException("unexpected low online log pattern");
+            m.instructions.set(call,new InsnNode(POP2));hooks++;
+          }
+        }
         int count=0;
         for(AbstractInsnNode n:m.instructions)if(n instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)n;
           if(call.owner.equals(base+"airdrops/ActiveAirdrop") && call.name.equals("getEndTime") && call.desc.equals("()J")){
