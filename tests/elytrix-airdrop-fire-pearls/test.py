@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+import os,pathlib,subprocess,tempfile
+src=pathlib.Path(__file__).resolve().parents[2]/'tools/elytrix-airdrop/src/ru/rooyzee/elytrixairdrop/patch/FirePearls.java'
+f={
+'org/bukkit/Material.java':'package org.bukkit;public enum Material{ENDER_PEARL,CHORUS_FRUIT,STONE}',
+'org/bukkit/entity/Player.java':'package org.bukkit.entity;public class Player{}',
+'org/bukkit/inventory/ItemStack.java':'package org.bukkit.inventory;import org.bukkit.Material;public class ItemStack{Material m;public ItemStack(Material m){this.m=m;}public Material getType(){return m;}}',
+'org/bukkit/event/player/PlayerInteractEvent.java':'package org.bukkit.event.player;import org.bukkit.entity.Player;import org.bukkit.inventory.ItemStack;public class PlayerInteractEvent{public Player p;public ItemStack i;public PlayerInteractEvent(Player p,ItemStack i){this.p=p;this.i=i;}public Player getPlayer(){return p;}public ItemStack getItem(){return i;}}',
+'org/bukkit/event/player/PlayerTeleportEvent.java':'package org.bukkit.event.player;import org.bukkit.entity.Player;public class PlayerTeleportEvent{public enum TeleportCause{ENDER_PEARL,CHORUS_FRUIT,PLUGIN}public Player p;public TeleportCause c;public PlayerTeleportEvent(Player p,TeleportCause c){this.p=p;this.c=c;}public Player getPlayer(){return p;}public TeleportCause getCause(){return c;}}',
+'ru/rooyzee/elytrixairdrop/airdrops/ActiveAirdrop.java':'package ru.rooyzee.elytrixairdrop.airdrops;public class ActiveAirdrop{}',
+'ru/rooyzee/elytrixairdrop/airdrops/types/ActiveFireAirdrop.java':'package ru.rooyzee.elytrixairdrop.airdrops.types;import ru.rooyzee.elytrixairdrop.airdrops.ActiveAirdrop;import org.bukkit.entity.Player;public class ActiveFireAirdrop extends ActiveAirdrop{public Player locked;public boolean isArenaParticipant(Player p){return locked==p;}}',
+'ru/rooyzee/elytrixairdrop/Main.java':'package ru.rooyzee.elytrixairdrop;import ru.rooyzee.elytrixairdrop.airdrops.ActiveAirdrop;public class Main{public Manager m=new Manager();public Manager getAirdropManager(){return m;}public static class Manager{public ActiveAirdrop a;public ActiveAirdrop getActive(){return a;}}}',
+'Test.java':'''import org.bukkit.*;import org.bukkit.entity.*;import org.bukkit.inventory.*;import org.bukkit.event.player.*;import ru.rooyzee.elytrixairdrop.*;import ru.rooyzee.elytrixairdrop.airdrops.*;import ru.rooyzee.elytrixairdrop.airdrops.types.*;import ru.rooyzee.elytrixairdrop.patch.*;public class Test{static void ok(boolean b,String s){if(!b)throw new AssertionError(s);}public static void main(String[]a){Main p=new Main();Player member=new Player(),outsider=new Player();ActiveFireAirdrop fire=new ActiveFireAirdrop();fire.locked=member;p.m.a=fire;PlayerInteractEvent pearl=new PlayerInteractEvent(member,new ItemStack(Material.ENDER_PEARL));ok(FirePearls.allowThrow(p,pearl),"participant throw");ok(!FirePearls.allowThrow(p,new PlayerInteractEvent(outsider,new ItemStack(Material.ENDER_PEARL))),"outsider no exception");ok(!FirePearls.allowThrow(p,new PlayerInteractEvent(member,new ItemStack(Material.CHORUS_FRUIT))),"chorus remains blocked");ok(!FirePearls.allowThrow(p,new PlayerInteractEvent(member,null)),"null item");ok(FirePearls.allowTeleport(p,new PlayerTeleportEvent(member,PlayerTeleportEvent.TeleportCause.ENDER_PEARL)),"pearl reaches arena boundary check");ok(!FirePearls.allowTeleport(p,new PlayerTeleportEvent(member,PlayerTeleportEvent.TeleportCause.CHORUS_FRUIT)),"chorus unchanged");p.m.a=new ActiveAirdrop();ok(!FirePearls.allowThrow(p,pearl),"other event unchanged");p.m.a=null;ok(!FirePearls.allowThrow(p,pearl),"no event unchanged");System.out.println("Fire pearl exception restricted to locked participants and pearl cause OK");}}'''
+}
+with tempfile.TemporaryDirectory() as tmp:
+ p=pathlib.Path(tmp)
+ for name,text in f.items():
+  q=p/name;q.parent.mkdir(parents=True,exist_ok=True);q.write_text(text)
+ subprocess.run([os.environ['JAVA'],'-jar',os.environ['ECJ'],'-21','-proc:none','-nowarn','-d',tmp,*[str(p/n) for n in f],str(src)],check=True)
+ subprocess.run([os.environ['JAVA'],'-Xverify:all','-cp',tmp,'Test'],check=True)

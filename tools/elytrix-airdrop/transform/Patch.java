@@ -12,7 +12,7 @@ public class Patch implements Opcodes {
     patch(root,base+"managers/AirdropManager");
     patch(root,base+"airdrops/types/ActivePeacefulAirdrop");
     patch(root,base+"airdrops/types/ActiveSkyAirdrop");
-    if(hooks != 24) throw new IllegalStateException("Unexpected hook count: "+hooks);
+    if(hooks != 26) throw new IllegalStateException("Unexpected hook count: "+hooks);
     System.out.println("Applied "+hooks+" bytecode hooks");
   }
   static void patch(Path root,String name) throws Exception {
@@ -29,6 +29,14 @@ public class Patch implements Opcodes {
         x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/SkyMechanics","skyActive","(L"+base+"Main;)Z",false));
         x.add(new JumpInsnNode(IFEQ,keep)); x.add(new InsnNode(RETURN)); x.add(keep); x.add(new FrameNode(F_SAME,0,null,0,null));
         m.instructions.insert(x); hooks++;
+      }
+      if(name.equals(base+"listeners/ProtectionListener") && (m.name.equals("onTeleport") || m.name.equals("onPearlThrow"))) {
+        boolean teleport=m.name.equals("onTeleport");String ev=teleport?"PlayerTeleportEvent":"PlayerInteractEvent";
+        InsnList x=new InsnList();LabelNode keep=new LabelNode();
+        x.add(new VarInsnNode(ALOAD,0));x.add(new FieldInsnNode(GETFIELD,name,"plugin","L"+base+"Main;"));x.add(new VarInsnNode(ALOAD,1));
+        x.add(new MethodInsnNode(INVOKESTATIC,base+"patch/FirePearls",teleport?"allowTeleport":"allowThrow","(L"+base+"Main;Lorg/bukkit/event/player/"+ev+";)Z",false));
+        x.add(new JumpInsnNode(IFEQ,keep));x.add(new InsnNode(RETURN));x.add(keep);x.add(new FrameNode(F_SAME,0,null,0,null));
+        m.instructions.insert(x);hooks++;
       }
       if(name.equals(base+"managers/AirdropManager") && m.name.equals("stop")) {
         for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) if(n instanceof MethodInsnNode) {

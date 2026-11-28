@@ -23,9 +23,11 @@ public final class FireArena implements Listener {
  private final World world;
  private final Set<Location> footprint=new HashSet<>();
  private final Map<UUID,Location> locked=new HashMap<>();
+ private final Set<UUID> respawning=new HashSet<>();
  private final Map<UUID,Long> warnings=new HashMap<>();
  private final FireFootprint geometry;
  private final List<Location> edges;
+ private final double pearlMinY,pearlMaxY,insideMinY,insideMaxY;
  private final Map<UUID,FireWall> walls=new HashMap<>();
  private BukkitTask task;
  private boolean closed;
@@ -41,6 +43,12 @@ public final class FireArena implements Listener {
    if(old==null || (full && !oldFull) || (full==oldFull && p.getBlockY()>old.getBlockY()))columns.put(k,p.getBlock().getLocation());
   }
   geometry=new FireFootprint(columns.keySet());edges=new ArrayList<>();for(long k:geometry.edges())edges.add(columns.get(k));
+  double high=Double.NEGATIVE_INFINITY;
+  for(Location edge:edges)high=Math.max(high,edge.getBlockY());
+  double schematicLow=Double.POSITIVE_INFINITY,schematicHigh=Double.NEGATIVE_INFINITY;
+  for(Location pos:surface){schematicLow=Math.min(schematicLow,pos.getBlockY());schematicHigh=Math.max(schematicHigh,pos.getBlockY());}
+  insideMinY=schematicLow-1.0;insideMaxY=schematicHigh+8.0;
+  pearlMinY=insideMinY;pearlMaxY=Math.min(insideMaxY,high+7.0);
   for(Location pos:surface)if(world.equals(pos.getWorld()) && pos.getBlock().getType().isSolid())footprint.add(pos.getBlock().getLocation());
  }
  public static FireArena start(Main plugin,ActiveFireAirdrop event,ConfigurationSection config){
@@ -68,10 +76,12 @@ public final class FireArena implements Listener {
   for(FireWall wall:walls.values())wall.close();walls.clear();
   HandlerList.unregisterAll(this);
   for(UUID id:locked.keySet()){Player p=Bukkit.getPlayer(id);if(p!=null && p.isOnline())p.sendMessage(ColorUtil.colorize("&#F8BEFBАирдроп &8» &aОгненная преграда исчезла!"));}
-  locked.clear();warnings.clear();
+  locked.clear();respawning.clear();warnings.clear();
  }
  private boolean eligible(Player p){return p.isOnline() && !p.isDead() && p.getGameMode()!=GameMode.CREATIVE && p.getGameMode()!=GameMode.SPECTATOR;}
- private boolean inside(Location l){return l!=null && world.equals(l.getWorld()) && geometry.contains(l.getBlockX(),l.getBlockZ());}
+ private boolean inside(Location l){return l!=null && world.equals(l.getWorld()) && l.getY()>=insideMinY && l.getY()<=insideMaxY && geometry.contains(l.getBlockX(),l.getBlockZ());}
+ public boolean isParticipant(Player p){return p!=null && !closed && eligible(p) && locked.containsKey(p.getUniqueId());}
+ private boolean insidePearl(Location l){return inside(l) && l.getY()>=pearlMinY && l.getY()<=pearlMaxY;}
  private boolean stepping(Location l){
   if(!inside(l))return false;
   Location below=l.clone().subtract(0,0.15,0).getBlock().getLocation();
@@ -92,7 +102,7 @@ public final class FireArena implements Listener {
  }
  private void tick(){
   if(plugin.getAirdropManager().getActive()!=event || event.isLooted()){close();return;}
-  for(UUID id:new ArrayList<>(locked.keySet())){Player player=Bukkit.getPlayer(id);if(player!=null && player.isOnline() && !eligible(player))release(id);}
+  for(UUID id:new ArrayList<>(locked.keySet())){Player player=Bukkit.getPlayer(id);if(player!=null && player.isOnline() && !eligible(player) && !respawning.contains(id))release(id);}
   for(Player p:world.getPlayers())if(eligible(p))lock(p,p.getLocation());
   for(FireWall wall:walls.values())wall.tick();
  }
@@ -101,6 +111,7 @@ public final class FireArena implements Listener {
   if(e instanceof PlayerTeleportEvent)return;
   Player p=e.getPlayer();Location to=e.getTo();if(to==null)return;
   UUID id=p.getUniqueId();
+  if(respawning.contains(id))return;
   if(!eligible(p)){release(id);return;}
   if(!locked.containsKey(id)){lock(p,e.getFrom());if(!locked.containsKey(id))lock(p,to);}
   if(!locked.containsKey(id))return;
@@ -111,8 +122,10 @@ public final class FireArena implements Listener {
  public void teleport(PlayerTeleportEvent e){
   Player p=e.getPlayer();UUID id=p.getUniqueId();
   if(!locked.containsKey(id))return;
+  if(respawning.contains(id)){e.setCancelled(true);return;}
   if(!eligible(p)){release(id);return;}
-  if(!inside(e.getTo())){e.setCancelled(true);warn(p);}
+  boolean permitted=e.getCause()==PlayerTeleportEvent.TeleportCause.ENDER_PEARL?insidePearl(e.getTo()):inside(e.getTo());
+  if(!permitted){e.setCancelled(true);warn(p);}
   else locked.put(id,e.getTo().clone());
  }
  @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
@@ -120,17 +133,53 @@ public final class FireArena implements Listener {
   if(e.getEntered() instanceof Player && locked.containsKey(e.getEntered().getUniqueId()))e.setCancelled(true);
  }
  @EventHandler public void disable(org.bukkit.event.server.PluginDisableEvent e){if(e.getPlugin()==plugin)close();}
- private void release(UUID id){locked.remove(id);warnings.remove(id);FireWall wall=walls.remove(id);if(wall!=null)wall.close();}
- @EventHandler public void death(PlayerDeathEvent e){release(e.getEntity().getUniqueId());}
+ private void release(UUID id){locked.remove(id);respawning.remove(id);warnings.remove(id);FireWall wall=walls.remove(id);if(wall!=null)wall.close();}
+ @EventHandler public void death(PlayerDeathEvent e){
+  UUID id=e.getEntity().getUniqueId();if(!locked.containsKey(id))return;
+  respawning.add(id);FireWall wall=walls.remove(id);if(wall!=null)wall.close();
+ }
+ /** Keep a participant in the arena after death, but never respawn into solid blocks. */
+ @EventHandler(priority=EventPriority.HIGHEST) public void respawn(PlayerRespawnEvent e){
+  Player p=e.getPlayer();UUID id=p.getUniqueId();
+  if(!respawning.contains(id) || !locked.containsKey(id))return;
+  if(plugin.getAirdropManager().getActive()!=event || event.isLooted() || p.getGameMode()==GameMode.SPECTATOR){release(id);return;}
+  Location destination=safeRespawn(locked.get(id));
+  if(destination==null){plugin.getLogger().warning("No safe fire arena respawn; releasing "+p.getName());release(id);return;}
+  e.setRespawnLocation(destination);locked.put(id,destination.clone());respawning.remove(id);
+  Bukkit.getScheduler().runTask(plugin,()->{
+   if(plugin.getAirdropManager().getActive()!=event || event.isLooted() || !p.isOnline() || !locked.containsKey(id))return;
+   if(!eligible(p)){release(id);return;}
+   if(!inside(p.getLocation()))p.teleport(destination);
+   if(!walls.containsKey(id))walls.put(id,FireWall.start(plugin,world,edges,p));
+  });
+ }
+ private Location safeRespawn(Location previous){
+  Location best=null;double score=Double.POSITIVE_INFINITY;
+  for(Location pos:footprint){
+   org.bukkit.block.Block floor=pos.getBlock();Material type=floor.getType();
+   if(!type.isSolid() || !type.isOccluding() || type==Material.MAGMA_BLOCK)continue;
+   Location feet=pos.clone().add(.5,1,.5);if(!inside(feet) || !feet.getBlock().isPassable() || !feet.clone().add(0,1,0).getBlock().isPassable())continue;
+   double dx=feet.getX()-previous.getX(),dz=feet.getZ()-previous.getZ(),dy=feet.getY()-previous.getY();double d=dx*dx+dz*dz+dy*dy;
+   if(d<score){score=d;best=feet;}
+  }
+  return best;
+ }
  @EventHandler public void quit(PlayerQuitEvent e){FireWall wall=walls.remove(e.getPlayer().getUniqueId());if(wall!=null)wall.close();}
  @EventHandler public void join(PlayerJoinEvent e){
   Player p=e.getPlayer();Location safe=locked.get(p.getUniqueId());
   if(safe==null)return;
   Bukkit.getScheduler().runTask(plugin,()->{
-   if(plugin.getAirdropManager().getActive()!=event || event.isLooted() || !p.isOnline() || !locked.containsKey(p.getUniqueId()))return;
-   if(!eligible(p)){release(p.getUniqueId());return;}
-   if(!inside(p.getLocation()))p.teleport(safe);
-   if(inside(p.getLocation()))walls.put(p.getUniqueId(),FireWall.start(plugin,world,edges,p));
+   UUID id=p.getUniqueId();
+   if(plugin.getAirdropManager().getActive()!=event || event.isLooted() || !p.isOnline() || !locked.containsKey(id))return;
+   if(respawning.contains(id)){
+    if(p.isDead())return; // Wait for the regular respawn event.
+    Location destination=safeRespawn(locked.get(id));
+    if(destination==null){plugin.getLogger().warning("No safe fire arena rejoin; releasing "+p.getName());release(id);return;}
+    locked.put(id,destination);respawning.remove(id);p.teleport(destination);
+   }
+   if(!eligible(p)){release(id);return;}
+   if(!inside(p.getLocation()))p.teleport(locked.get(id));
+   if(inside(p.getLocation()) && !walls.containsKey(id))walls.put(id,FireWall.start(plugin,world,edges,p));
   });
  }
 }

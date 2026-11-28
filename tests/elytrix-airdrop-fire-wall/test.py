@@ -3,7 +3,7 @@ import os,pathlib,tempfile,subprocess
 base=pathlib.Path(__file__).resolve().parents[2]/'tools/elytrix-airdrop/src/ru/rooyzee/elytrixairdrop/patch'
 # Share small Bukkit stubs with the arena test; these overrides model real block writes.
 prev=(pathlib.Path(__file__).resolve().parents[1]/'elytrix-airdrop-fire-arena/test.py').read_text().split('with tempfile.TemporaryDirectory() as tmp:')[0]
-env={'__file__':str(pathlib.Path(__file__).resolve().parents[1]/'elytrix-airdrop-fire-arena/test.py')};exec(prev,env); f=env['f'];f.pop('ru/rooyzee/elytrixairdrop/patch/FireWall.java');f.pop('Test.java');f['org/bukkit/Location.java']=f['org/bukkit/Location.java'].replace('public Location subtract(double a,double b,double c)', 'public Location add(double a,double b,double c){x+=a;y+=b;z+=c;return this;}public Location subtract(double a,double b,double c)')
+env={'__file__':str(pathlib.Path(__file__).resolve().parents[1]/'elytrix-airdrop-fire-arena/test.py')};exec(prev,env); f=env['f'];f.pop('ru/rooyzee/elytrixairdrop/patch/FireWall.java');f.pop('Test.java')
 f.update({
 'org/bukkit/Material.java':'package org.bukkit;public enum Material{STONE,BLACKSTONE,AIR,CAVE_AIR,CHEST;public org.bukkit.block.data.BlockData createBlockData(){return new org.bukkit.block.data.BlockData(this);}public boolean isSolid(){return this==STONE||this==CHEST;}public boolean isAir(){return this==AIR||this==CAVE_AIR;}}',
 'org/bukkit/block/data/BlockData.java':'package org.bukkit.block.data;import org.bukkit.*;public class BlockData implements Cloneable{public Material m;public BlockData(Material m){this.m=m;}public String getAsString(){return m.name();}public BlockData clone(){return new BlockData(m);}}',

@@ -311,6 +311,7 @@ public final class ActiveFireAirdrop extends ActiveAirdrop {
  }
  @Override public boolean isProtectedBlock(Location location){return super.isProtectedBlock(location)||(chestLocation!=null&&sameBlock(chestLocation,location));}
  public boolean isLooted(){return looted;}
+ public boolean isArenaParticipant(Player player){return arena!=null && !looted && arena.isParticipant(player);}
  public boolean isBreakable(Location location){return phase==Phase.OPEN && location!=null && meteorBlocks.contains(blockKey(location)) && location.getBlock().getType()==Material.OBSIDIAN;}
  public void onBreakableBroken(Main plugin,Location location){}
  public boolean isMeteorArea(Location location){return location!=null && meteorCenter!=null && location.getWorld()!=null && location.getWorld().equals(meteorCenter.getWorld()) && location.distanceSquared(meteorCenter)<=25;}

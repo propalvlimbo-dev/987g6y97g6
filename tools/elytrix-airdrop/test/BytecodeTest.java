@@ -60,6 +60,9 @@ public class BytecodeTest implements Opcodes {
    ClassNode protection=read(jar,BASE+"listeners/ProtectionListener");int bypass=0;
    for(MethodNode m:protection.methods)if(m.name.equals("onTeleport")||m.name.equals("onPearlThrow"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode && ((MethodInsnNode)i).owner.equals(BASE+"patch/SkyMechanics") && ((MethodInsnNode)i).name.equals("skyActive"))bypass++;
    if(bypass!=2)throw new AssertionError("sky teleport hooks "+bypass);
+   int pearlThrow=0,pearlTeleport=0;
+   for(MethodNode m:protection.methods)if(m.name.equals("onTeleport")||m.name.equals("onPearlThrow"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.owner.equals(BASE+"patch/FirePearls")&&a.name.equals("allowThrow")&&m.name.equals("onPearlThrow"))pearlThrow++;if(a.owner.equals(BASE+"patch/FirePearls")&&a.name.equals("allowTeleport")&&m.name.equals("onTeleport"))pearlTeleport++;}
+   if(pearlThrow!=1||pearlTeleport!=1)throw new AssertionError("fire pearl exception missing");
    ClassNode main=read(jar,BASE+"Main");boolean chest=false, sky=false;
    for(MethodNode m:main.methods)if(m.name.equals("onEnable"))for(AbstractInsnNode i:m.instructions)if(i instanceof MethodInsnNode){MethodInsnNode a=(MethodInsnNode)i;if(a.owner.equals(BASE+"patch/PeacefulChest")&&a.name.equals("install"))chest=true;if(a.owner.equals(BASE+"patch/SkyMechanics")&&a.name.equals("install"))sky=true;}
    if(!chest||!sky)throw new AssertionError("mechanics installation missing");
